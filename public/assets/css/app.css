@@ -1,0 +1,127 @@
+:root {
+    --app-primary: #1e3a8a;
+    --app-primary-2: #2748a8;
+    --app-accent: #facc15;
+    --app-bg: #f4f6fb;
+    --bs-primary: #1e3a8a;
+    --bs-primary-rgb: 30, 58, 138;
+    --bs-link-color: #1e3a8a;
+    --bs-link-color-rgb: 30, 58, 138;
+    --bs-link-hover-color: #172c69;
+    --bs-font-sans-serif: 'Sarabun', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+body {
+    background: var(--app-bg);
+    font-family: var(--bs-font-sans-serif);
+    font-size: 15.5px;
+}
+
+a { text-decoration: none; }
+
+.btn-primary {
+    --bs-btn-bg: var(--app-primary);
+    --bs-btn-border-color: var(--app-primary);
+    --bs-btn-hover-bg: #172c69;
+    --bs-btn-hover-border-color: #172c69;
+    --bs-btn-active-bg: #13245a;
+    --bs-btn-disabled-bg: var(--app-primary);
+    --bs-btn-disabled-border-color: var(--app-primary);
+}
+.btn-outline-primary {
+    --bs-btn-color: var(--app-primary);
+    --bs-btn-border-color: var(--app-primary);
+    --bs-btn-hover-bg: var(--app-primary);
+    --bs-btn-hover-border-color: var(--app-primary);
+    --bs-btn-active-bg: var(--app-primary);
+    --bs-btn-active-border-color: var(--app-primary);
+}
+.nav-pills { --bs-nav-pills-link-active-bg: var(--app-primary); }
+.pagination { --bs-pagination-active-bg: var(--app-primary); --bs-pagination-active-border-color: var(--app-primary); }
+.text-bg-primary { background-color: var(--app-primary) !important; }
+.progress-bar.bg-primary, .progress-bar:not([class*="bg-"]) { background-color: var(--app-primary-2); }
+
+/* ---------- navbar / sidebar ---------- */
+.app-navbar {
+    background: linear-gradient(90deg, var(--app-primary), var(--app-primary-2));
+    border-bottom: 3px solid var(--app-accent);
+}
+.app-navbar .navbar-brand { font-weight: 600; font-size: 1.05rem; }
+
+.app-shell { min-height: calc(100vh - 62px); }
+.app-sidebar {
+    width: 250px;
+    background: #fff;
+    border-right: 1px solid #e3e7ef;
+}
+@media (min-width: 992px) {
+    .app-sidebar { position: sticky; top: 62px; height: calc(100vh - 62px); overflow-y: auto; flex-shrink: 0; }
+}
+.app-sidebar .nav-link {
+    color: #3b4254;
+    padding: .6rem 1.25rem;
+    border-left: 3px solid transparent;
+}
+.app-sidebar .nav-link:hover { background: #f1f4fb; color: var(--app-primary); }
+.app-sidebar .nav-link.active {
+    background: #e8edfb;
+    color: var(--app-primary);
+    border-left-color: var(--app-primary);
+    font-weight: 600;
+}
+
+.app-main { padding: 1.5rem; min-width: 0; }
+@media (min-width: 1200px) { .app-main { padding: 2rem 2.5rem; } }
+
+/* ---------- cards ---------- */
+.card { border: 1px solid #e3e7ef; border-radius: .75rem; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
+.card-header { border-bottom-color: #eef1f6; }
+.card > .table-responsive:last-child .table,
+.card > .table:last-child { margin-bottom: 0; }
+
+.stat-card .stat-icon {
+    width: 42px; height: 42px; border-radius: 10px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.25rem; margin-bottom: .5rem;
+}
+.hero-card { background: linear-gradient(135deg, #ffffff 60%, #eef2ff); }
+
+.activity-card { transition: transform .15s, box-shadow .15s; }
+.activity-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(30, 58, 138, .1); }
+
+/* ---------- login ---------- */
+.app-main-guest { min-height: 100vh; }
+.login-wrap {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem;
+    background: radial-gradient(circle at 20% 20%, #2748a8 0, #1e3a8a 45%, #0f1f4d 100%);
+}
+.login-card { width: 100%; max-width: 440px; border: 0; border-top: 5px solid var(--app-accent); }
+
+/* ---------- signature ---------- */
+.signature-pad-wrap {
+    border: 2px dashed #b8c2d8; border-radius: .5rem; background: #fff;
+    position: relative; touch-action: none;
+}
+.signature-pad-wrap::after {
+    content: ''; position: absolute; left: 8%; right: 8%; bottom: 28%;
+    border-bottom: 1px solid #d5dbe8; pointer-events: none;
+}
+.signature-pad-wrap canvas { width: 100%; height: auto; display: block; cursor: crosshair; }
+.signature-preview { border: 1px solid #e3e7ef; border-radius: .5rem; background: #fff; padding: .5rem; text-align: center; }
+.signature-preview img { max-width: 100%; max-height: 110px; }
+.sig-thumb { max-height: 38px; max-width: 140px; }
+
+/* ---------- student picker ---------- */
+.picker-results { max-height: 260px; overflow-y: auto; }
+.picker-results:empty { display: none; }
+.picker-chip { font-size: .9rem; font-weight: 400; padding: .45rem .6rem; display: inline-flex; align-items: center; }
+.picker-chip .btn-close { font-size: .6rem; }
+
+details > summary { cursor: pointer; }
+
+@media print {
+    .app-navbar, .app-sidebar, .alert-dismissible, .btn, form .card-footer { display: none !important; }
+    .app-main { padding: 0 !important; }
+    body { background: #fff; }
+    .card { box-shadow: none; }
+}

@@ -1,0 +1,13 @@
+RewriteEngine On
+
+# ส่ง header Authorization (Bearer token ของ API) ต่อให้ PHP
+CGIPassAuth On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# ไฟล์/โฟลเดอร์ที่มีอยู่จริง (css, js, รูป) ให้ Apache ส่งตรง
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# ที่เหลือส่งเข้า index.php (front controller)
+RewriteRule ^ index.php [L,QSA]

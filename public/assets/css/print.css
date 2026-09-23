@@ -1,0 +1,101 @@
+/* ===== แบบบันทึกการฝึกทักษะวิชาชีพ (A4 แนวนอน) ===== */
+@page { size: A4 landscape; margin: 9mm 12mm; }
+
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    font-family: 'Sarabun', 'TH SarabunPSK', 'TH Sarabun New', sans-serif;
+    font-size: 14.5px;
+    color: #000;
+    background: #e9ecef;
+}
+
+/* ---------- toolbar (แสดงบนจอเท่านั้น) ---------- */
+.print-toolbar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+    padding: 10px 16px; background: #1e3a8a; color: #fff; font-size: 14px;
+}
+.print-toolbar select, .print-toolbar input[type=text] {
+    font-family: inherit; font-size: 14px; padding: 3px 6px; border-radius: 4px; border: 0; margin-left: 4px;
+}
+.print-toolbar .spacer { flex: 1; }
+.print-toolbar .btn-print, .print-toolbar .btn-back {
+    font-family: inherit; font-size: 15px; padding: 6px 14px; border-radius: 6px; border: 0; cursor: pointer; text-decoration: none;
+}
+.print-toolbar .btn-print { background: #facc15; color: #000; font-weight: 600; }
+.print-toolbar .btn-back { background: rgba(255,255,255,.15); color: #fff; }
+
+/* ---------- แผ่นกระดาษ ---------- */
+.sheet {
+    width: 297mm; min-height: 210mm;
+    margin: 16px auto; padding: 9mm 12mm;
+    background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    display: flex; flex-direction: column;
+    page-break-after: always; break-after: page;
+}
+.sheet:last-of-type { page-break-after: auto; break-after: auto; }
+
+.sheet-head { display: flex; align-items: center; gap: 12px; }
+.sheet-head .logo { height: 17mm; }
+.sheet-head .org { font-weight: 700; font-size: 14px; line-height: 1.45; }
+
+.title { text-align: center; font-size: 17px; font-weight: 700; margin: 3mm 0 3mm; }
+
+.line { display: flex; align-items: baseline; font-weight: 700; margin-bottom: 3mm; white-space: nowrap; }
+.line-1 { justify-content: space-between; }
+.line-1 .checks { margin-right: 25mm; }
+.line-2 { font-weight: 400; }
+
+.fill {
+    display: inline-block; border-bottom: 1.3px dotted #000;
+    text-align: center; padding: 0 4px; min-height: 1.2em; font-weight: 400;
+    overflow: hidden; text-overflow: ellipsis; vertical-align: bottom;
+}
+.w-sem   { width: 45mm; }
+.w-name  { width: 48mm; }
+.w-last  { width: 55mm; }
+.w-code  { width: 45mm; }
+.w-major { flex: 1; min-width: 60mm; }
+.w-sign  { width: 70mm; }
+.w-headname { width: 62mm; }
+.w-headpos  { width: 62mm; }
+
+.box {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 4.2mm; height: 4.2mm; border: 1.6px solid #000; margin-right: 1.5mm;
+    font-size: 12px; line-height: 1; vertical-align: -1px;
+}
+.box.ms { margin-left: 4mm; }
+
+/* ---------- ตาราง ---------- */
+table.record { width: 100%; border-collapse: collapse; table-layout: fixed; }
+table.record th, table.record td { border: 1.2px solid #000; padding: 1.2mm 1.6mm; vertical-align: middle; }
+table.record th { font-weight: 700; text-align: center; font-size: 14px; line-height: 1.3; }
+table.record tbody tr { height: 21mm; }
+table.record td.c { text-align: center; }
+table.record td.big { font-size: 16px; font-weight: 600; }
+table.record td.mark { font-size: 20px; font-weight: 700; }
+table.record .skill { font-weight: 600; line-height: 1.3; }
+table.record .sub { font-size: 11.5px; color: #333; line-height: 1.3; }
+table.record td.sig img { max-width: 100%; max-height: 13mm; display: block; margin: 0 auto; }
+table.record td.sig .typed { font-size: 14.5px; }
+table.record td.small { font-size: 12.5px; }
+
+/* ---------- ท้ายกระดาษ ---------- */
+.sheet-foot { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 7mm; gap: 8mm; }
+.sheet-foot .summary { font-size: 13.5px; padding-top: 2mm; flex: 1; }
+.head-sign { width: 118mm; line-height: 2.1; font-size: 14px; }
+.head-sign .paren { padding-left: 11mm; }
+.meta { margin-top: auto; padding-top: 3mm; font-size: 10.5px; color: #777; text-align: right; }
+
+@media print {
+    body { background: #fff; }
+    .print-toolbar { display: none; }
+    .sheet { margin: 0; box-shadow: none; width: auto; min-height: 190mm; padding: 0; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+@media screen and (max-width: 1100px) {
+    .sheet { transform-origin: top left; }
+}

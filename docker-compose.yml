@@ -1,0 +1,70 @@
+services:
+  web:
+    build: .
+    container_name: skillhours_web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    volumes:
+      # mount โค้ดเข้าไปตรงๆ แก้ไฟล์แล้วรีเฟรชเบราว์เซอร์ได้ทันที
+      - ./app:/var/www/html/app
+      - ./public:/var/www/html/public
+    environment:
+      APP_NAME: ${APP_NAME:-ระบบบันทึกชั่วโมงทักษะวิชาชีพ}
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-skillhours}
+      DB_USER: ${DB_USER:-skillhours}
+      DB_PASS: ${DB_PASS:-skillhours_pass}
+      AUTH_MODE: ${AUTH_MODE:-local}
+      UNI_API_DRIVER: ${UNI_API_DRIVER:-mock}
+      UNI_API_BASE_URL: ${UNI_API_BASE_URL:-}
+      UNI_API_KEY: ${UNI_API_KEY:-}
+      UNI_API_TIMEOUT: ${UNI_API_TIMEOUT:-10}
+      UNI_API_VERIFY_SSL: ${UNI_API_VERIFY_SSL:-true}
+      UNI_API_AUTH_ENDPOINT: ${UNI_API_AUTH_ENDPOINT:-/auth/login}
+      UNI_API_STUDENT_ENDPOINT: ${UNI_API_STUDENT_ENDPOINT:-/students/{code}}
+      UNI_API_STAFF_ENDPOINT: ${UNI_API_STAFF_ENDPOINT:-/staff/{code}}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:11
+    container_name: skillhours_db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASS:-root_pass}
+      MARIADB_DATABASE: ${DB_NAME:-skillhours}
+      MARIADB_USER: ${DB_USER:-skillhours}
+      MARIADB_PASSWORD: ${DB_PASS:-skillhours_pass}
+      TZ: Asia/Bangkok
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--default-time-zone=+07:00"]
+    volumes:
+      - db_data:/var/lib/mysql
+      # ไฟล์ .sql ในโฟลเดอร์นี้จะถูกรันอัตโนมัติ "ครั้งแรก" ที่สร้างฐานข้อมูลเท่านั้น
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${DB_PORT_HOST:-3307}:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: skillhours_pma
+    restart: unless-stopped
+    ports:
+      - "${PMA_PORT:-8081}:80"
+    environment:
+      PMA_HOST: db
+      UPLOAD_LIMIT: 64M
+    depends_on:
+      - db
+
+volumes:
+  db_data:
