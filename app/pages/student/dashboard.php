@@ -72,50 +72,18 @@ page_header(
 
 <div class="row g-3">
     <div class="col-lg-7">
-        <div class="card h-100">
-            <div class="card-header bg-white fw-semibold"><i class="bi bi-list-check me-1"></i>ชั่วโมงแยกตามทักษะ</div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr><th>ทักษะ</th><th>ผู้รับผิดชอบ</th><th class="text-end" style="width:9rem">ชั่วโมง</th></tr>
-                    </thead>
-                    <tbody>
-                    <?php foreach ($sum['skills'] as $s): ?>
-                        <tr>
-                            <td>
-                                <div><?= e($s['name']) ?></div>
-                                <?= progress_bar((float) $s['counted'], (float) $s['max_hours']) ?>
-                            </td>
-                            <td class="small"><?= e($s['owner_name'] ?? '-') ?></td>
-                            <td class="text-end">
-                                <strong><?= fmt_hours($s['counted']) ?></strong> / <?= fmt_hours($s['max_hours']) ?>
-                                <?php if ($s['over']): ?>
-                                    <div class="small text-warning" title="เกินชั่วโมงสูงสุดของทักษะ ส่วนเกินไม่นับ">ฝึกจริง <?= fmt_hours($s['hours']) ?></div>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-            <?php if ($sum['cap']): ?>
-                <div class="card-footer bg-white small text-muted">* แต่ละทักษะนับชั่วโมงได้สูงสุดตามที่กำหนด (ส่วนเกินไม่นับรวม)</div>
-            <?php endif; ?>
-        </div>
+        <?php teacher_hours_card($sum); ?>
     </div>
     <div class="col-lg-5">
         <div class="card mb-3">
-            <div class="card-header bg-white fw-semibold"><i class="bi bi-person-badge me-1"></i>ชั่วโมงจากอาจารย์แต่ละท่าน</div>
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-list-check me-1"></i>ชั่วโมงแยกตามทักษะ</div>
             <ul class="list-group list-group-flush">
-                <?php foreach ($sum['teachers'] as $t): ?>
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span><?= e($t['name']) ?> <span class="text-muted small">(<?= $t['activity_count'] ?> กิจกรรม)</span></span>
-                        <strong><?= fmt_hours($t['hours']) ?> ชม.</strong>
+                <?php foreach ($sum['skills'] as $s): ?>
+                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                        <span><?= e($s['name']) ?><div class="small text-muted"><?= e($s['owner_name'] ?? '-') ?></div></span>
+                        <strong class="text-nowrap ms-2"><?= fmt_hours($s['hours']) ?> ชม.</strong>
                     </li>
                 <?php endforeach; ?>
-                <?php if (!$sum['teachers']): ?>
-                    <li class="list-group-item text-muted small">ยังไม่มีชั่วโมงที่บันทึกผล</li>
-                <?php endif; ?>
             </ul>
         </div>
         <div class="card">

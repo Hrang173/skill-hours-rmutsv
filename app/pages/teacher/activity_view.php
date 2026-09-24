@@ -1,5 +1,6 @@
 <?php
 use App\Services\ActivityService;
+use App\Services\HoursService;
 
 $me = current_user();
 $id = input_int('id');
@@ -62,6 +63,10 @@ if (is_post()) {
             ]);
             audit('participation.record', ['activity_id' => $id, 'count' => $n, 'result' => $result, 'sign_method' => $sig['sign_method']]);
             flash('success', "บันทึกผลและลงลายมือชื่อ $n รายการเรียบร้อย");
+            $studentIds = q_all('SELECT student_id FROM participations WHERE id IN (' . implode(',', array_map('intval', $ids)) . ')');
+            if ($warn = ActivityService::capWarning((int) $me['id'], array_column($studentIds, 'student_id'), true)) {
+                flash('warning', $warn);
+            }
             break;
 
         case 'reset':
@@ -78,6 +83,9 @@ if (is_post()) {
 
         case 'add_students':
             $n = ActivityService::assignStudents($act, (array) ($_POST['student_ids'] ?? []), mb_substr((string) input('assign_note', ''), 0, 500) ?: null);
+            if ($warn = ActivityService::capWarning((int) $me['id'], (array) ($_POST['student_ids'] ?? []))) {
+                flash('warning', $warn);
+            }
             audit('activity.assign', ['activity_id' => $id, 'count' => $n]);
             flash($n ? 'success' : 'warning', $n ? "เพิ่ม/มอบหมายนักศึกษา $n คน" : 'ไม่มีนักศึกษาที่เพิ่มใหม่ (อาจอยู่ในกิจกรรมแล้ว)');
             break;
@@ -115,6 +123,17 @@ $parts = q_all(
     [$id]
 );
 $group = ['pending' => [], 'active' => [], 'other' => []];
+$withMe = HoursService::hoursWithTeacher((int) $me['id'], array_column($parts, 'student_id'));
+$cap = HoursService::teacherCap();
+/** ชั่วโมงที่นักศึกษามีกับอาจารย์ท่านนี้ เช่น "12/25" */
+$withMeBadge = function (int $sid) use ($withMe, $cap): string {
+    $h = $withMe[$sid] ?? 0.0;
+    if ($cap === null) {
+        return fmt_hours($h);
+    }
+    $cls = $h >= $cap ? 'text-bg-danger' : ($h >= $cap * 0.8 ? 'text-bg-warning' : 'text-bg-light border');
+    return '<span class="badge ' . $cls . '" title="ชั่วโมงที่ผ่านแล้วกับคุณ (นับได้สูงสุด ' . fmt_hours($cap) . ')">' . fmt_hours($h) . '/' . fmt_hours($cap) . '</span>';
+};
 foreach ($parts as $p) {
     $key = $p['status'] === 'pending' ? 'pending' : (in_array($p['status'], ['approved', 'completed'], true) ? 'active' : 'other');
     $group[$key][] = $p;
@@ -185,7 +204,7 @@ page_header(
     </div>
     <div class="table-responsive">
         <table class="table align-middle mb-0">
-            <thead><tr><th style="width:2rem"><input type="checkbox" class="form-check-input" data-check-all="pending"></th><th>รหัส</th><th>ชื่อ-สกุล</th><th>แผน</th><th>ข้อความ</th><th>วันที่ขอ</th><th></th></tr></thead>
+            <thead><tr><th style="width:2rem"><input type="checkbox" class="form-check-input" data-check-all="pending"></th><th>รหัส</th><th>ชื่อ-สกุล</th><th>แผน</th><th>ชม.กับฉัน</th><th>ข้อความ</th><th>วันที่ขอ</th><th></th></tr></thead>
             <tbody>
             <?php foreach ($group['pending'] as $p): ?>
                 <tr>
@@ -193,6 +212,7 @@ page_header(
                     <td><?= e($p['student_code']) ?></td>
                     <td><a href="/students/view?id=<?= $p['student_id'] ?>"><?= e(full_name($p)) ?></a></td>
                     <td><?= program_label($p['program_type']) ?></td>
+                    <td><?= $withMeBadge((int) $p['student_id']) ?></td>
                     <td class="small fst-italic"><?= e($p['request_note'] ?? '') ?></td>
                     <td class="small"><?= thai_date($p['created_at'], true) ?></td>
                     <td class="text-nowrap">
@@ -223,7 +243,7 @@ page_header(
             <thead class="table-light">
                 <tr>
                     <th style="width:2rem" class="d-print-none"><input type="checkbox" class="form-check-input" data-check-all="active"></th>
-                    <th>รหัส</th><th>ชื่อ-สกุล</th><th style="width:7rem">ชั่วโมง</th><th>ผล</th><th>ลายมือชื่อ</th><th class="d-print-none"></th>
+                    <th>รหัส</th><th>ชื่อ-สกุล</th><th class="d-print-none">ชม.กับฉัน</th><th style="width:7rem">ชั่วโมง</th><th>ผล</th><th>ลายมือชื่อ</th><th class="d-print-none"></th>
                 </tr>
             </thead>
             <tbody>
@@ -235,6 +255,7 @@ page_header(
                         <a href="/students/view?id=<?= $p['student_id'] ?>"><?= e(full_name($p)) ?></a>
                         <?= $p['source'] === 'assigned' ? '<span class="badge text-bg-primary ms-1">มอบหมาย</span>' : '' ?>
                     </td>
+                    <td class="d-print-none"><?= $withMeBadge((int) $p['student_id']) ?></td>
                     <td><input type="number" name="hours[<?= $p['id'] ?>]" class="form-control form-control-sm" step="0.5" min="0" max="999" value="<?= e(fmt_hours($p['hours_awarded'] ?? $act['hours'])) ?>"></td>
                     <td><?= participation_badge($p) ?><?php if ($p['remark']): ?><div class="small text-muted"><?= e($p['remark']) ?></div><?php endif; ?></td>
                     <td>
@@ -257,7 +278,7 @@ page_header(
                 </tr>
             <?php endforeach; ?>
             <?php if (!$group['active']): ?>
-                <tr><td colspan="7" class="text-center text-muted py-4">ยังไม่มีผู้เข้าร่วม</td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-4">ยังไม่มีผู้เข้าร่วม</td></tr>
             <?php endif; ?>
             </tbody>
         </table>

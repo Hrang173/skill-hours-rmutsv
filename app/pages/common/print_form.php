@@ -4,7 +4,9 @@ use App\Services\HoursService;
 /**
  * พิมพ์ "แบบบันทึกการฝึกทักษะวิชาชีพ" (A4 แนวนอน) ตามแบบฟอร์มของคณะ
  * - นักศึกษา: พิมพ์ได้เฉพาะของตัวเอง
- * - อาจารย์ / ฝ่ายทะเบียน: ?student_id=... หรือ ?code=รหัสนักศึกษา
+ * - อาจารย์ / ฝ่ายทะเบียน / admin: ?student_id=... หรือ ?code=รหัสนักศึกษา
+ * - ช่อง "ลงชื่อ" และ "( )" ท้ายเอกสาร: เฉพาะอาจารย์ / ฝ่ายทะเบียน / admin เลือกลงเป็นลายเซ็นหรือพิมพ์ชื่อได้
+ *   (ทำฝั่งเบราว์เซอร์ก่อนสั่งพิมพ์ — ดู public/assets/js/print-sign.js)
  */
 $me = current_user();
 if ($me['role'] === 'student') {
@@ -24,7 +26,11 @@ if (!$st || !can_view_student($sid)) {
 $semesterId = input_int('semester') ?: null;
 $skillType = (string) input('type', '');           // '1' | '2' | ''
 $showSummary = input('summary', '1') === '1';
-$headName = (string) input('head', setting('program_head_name', ''));
+$canSign = in_array($me['role'], STAFF_ROLES, true);
+
+// หัวหน้าหลักสูตรของสาขานักศึกษา (ฝ่ายทะเบียนกำหนดที่เมนู "หัวหน้าหลักสูตร")
+$head = q_one("SELECT id, prefix, first_name, last_name FROM users WHERE role = 'teacher' AND is_active = 1 AND head_of_major = ? LIMIT 1", [$st['major']]);
+$headName = $head ? full_name($head) : '';
 
 $records = HoursService::records($sid, $semesterId);
 $sum = HoursService::summary($sid, $st['program_type']);
@@ -86,8 +92,10 @@ audit('print.form', ['student_id' => $sid, 'semester_id' => $semesterId]);
     </label>
     <label><input type="checkbox" name="summary" value="1" <?= $showSummary ? 'checked' : '' ?>> แสดงสรุปชั่วโมง</label>
     <input type="hidden" name="summary" value="0" <?= $showSummary ? 'disabled' : '' ?>>
-    <label>หัวหน้าหลักสูตร <input type="text" name="head" value="<?= e($headName) ?>" placeholder="ชื่อหัวหน้าหลักสูตร" onchange="this.form.submit()"></label>
     <span class="spacer"></span>
+    <?php if ($canSign): ?>
+        <button type="button" class="btn-sign" data-open-sign><i class="bi bi-pen"></i> ลงชื่อท้ายเอกสาร</button>
+    <?php endif; ?>
     <button type="button" onclick="window.print()" class="btn-print"><i class="bi bi-printer"></i> พิมพ์ / บันทึกเป็น PDF</button>
     <a href="javascript:history.back()" class="btn-back">กลับ</a>
 </form>
@@ -180,14 +188,67 @@ audit('print.form', ['student_id' => $sid, 'semester_id' => $semesterId]);
             <?php endif; ?>
         </div>
         <div class="head-sign">
-            <div>ลงชื่อ <span class="fill w-sign"></span></div>
-            <div class="paren">( <span class="fill w-headname"><?= e($headName) ?></span> )</div>
-            <div>หัวหน้าหลักสูตร<span class="fill w-headpos"><?= e(setting('default_major', '')) ?></span></div>
+            <div>ลงชื่อ <span class="fill w-sign slot" data-slot="sign"></span></div>
+            <div class="paren">( <span class="fill w-headname slot" data-slot="paren"><?= e($headName) ?></span> )</div>
+            <div>หัวหน้าหลักสูตร<span class="fill w-headpos"><?= e($st['major']) ?></span></div>
         </div>
     </div>
     <div class="meta">พิมพ์จาก<?= e(config('app.name')) ?> เมื่อ <?= thai_date(date('Y-m-d H:i:s'), true) ?> · หน้า <?= $pi + 1 ?>/<?= $pageCount ?></div>
 </section>
 <?php endforeach; ?>
+
+<?php if ($canSign): ?>
+<dialog class="sign-dialog" id="signDialog">
+    <form method="dialog">
+        <h2><i class="bi bi-pen"></i> ลงชื่อท้ายแบบบันทึก</h2>
+        <p class="hint">
+            หัวหน้าหลักสูตรสาขา<?= e($st['major']) ?>:
+            <?= $headName ? '<b>' . e($headName) . '</b>' : '<span class="warn">ยังไม่ได้กำหนด (ฝ่ายทะเบียนตั้งได้ที่เมนู "หัวหน้าหลักสูตร")</span>' ?>
+        </p>
+        <?php foreach (['sign' => 'บรรทัด "ลงชื่อ ....."', 'paren' => 'ในวงเล็บ ( ..... )'] as $slot => $label): ?>
+            <fieldset class="slot-editor" data-slot-editor="<?= $slot ?>">
+                <legend><?= $label ?></legend>
+                <div class="seg">
+                    <label><input type="radio" name="<?= $slot ?>_mode" value="none"> เว้นว่าง</label>
+                    <label><input type="radio" name="<?= $slot ?>_mode" value="signature"> ลายเซ็น</label>
+                    <label><input type="radio" name="<?= $slot ?>_mode" value="name"> พิมพ์ชื่อ</label>
+                </div>
+                <div class="panel" data-panel="signature" hidden>
+                    <?php if ($me['signature_data']): ?>
+                        <label class="opt"><input type="radio" name="<?= $slot ?>_src" value="saved" checked> ใช้ลายเซ็นที่บันทึกไว้ของฉัน
+                            <img src="<?= e($me['signature_data']) ?>" alt="" class="saved-thumb"></label>
+                        <label class="opt"><input type="radio" name="<?= $slot ?>_src" value="draw"> เซ็นใหม่</label>
+                    <?php else: ?>
+                        <input type="radio" name="<?= $slot ?>_src" value="draw" checked hidden>
+                    <?php endif; ?>
+                    <div class="pad-wrap" data-draw <?= $me['signature_data'] ? 'hidden' : '' ?>>
+                        <canvas data-pad width="520" height="160"></canvas>
+                        <button type="button" class="link" data-clear>ล้าง</button>
+                    </div>
+                </div>
+                <div class="panel" data-panel="name" hidden>
+                    <input type="text" name="<?= $slot ?>_text" maxlength="200" placeholder="พิมพ์ชื่อ-สกุล">
+                </div>
+            </fieldset>
+        <?php endforeach; ?>
+        <menu>
+            <button type="button" class="link" data-reset>คืนค่าเริ่มต้น</button>
+            <span class="spacer"></span>
+            <button value="cancel" formnovalidate>ยกเลิก</button>
+            <button type="button" class="primary" data-apply>ใช้กับเอกสาร</button>
+        </menu>
+    </form>
+</dialog>
+<script>
+window.PRINT_SIGN = <?= json_encode([
+    'storageKey'     => 'skillhours.printSign.' . $sid,
+    'headName'       => $headName,
+    'savedSignature' => $me['signature_data'] ?: null,
+], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;
+</script>
+<script src="<?= asset('js/signature.js') ?>"></script>
+<script src="<?= asset('js/print-sign.js') ?>"></script>
+<?php endif; ?>
 
 <script>
 // checkbox "แสดงสรุป": ถ้าไม่ติ๊ก ให้ส่งค่า 0

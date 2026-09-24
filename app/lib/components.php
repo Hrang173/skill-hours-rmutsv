@@ -118,6 +118,49 @@ function signature_from_request(array $teacher): array
     return [['sign_method' => 'online', 'signature_data' => $sig, 'signer_name' => full_name($teacher)], null];
 }
 
+/**
+ * ตารางชั่วโมงแยกตามอาจารย์ผู้ควบคุม (อาจารย์ 1 ท่าน นับได้สูงสุด 25 ชม.)
+ * @param array $sum ผลจาก HoursService::summary()
+ */
+function teacher_hours_card(array $sum): void
+{
+    $cap = $sum['cap'];
+    ?>
+    <div class="card h-100">
+        <div class="card-header bg-white fw-semibold"><i class="bi bi-person-badge me-1"></i>ชั่วโมงแยกตามอาจารย์ผู้ควบคุม</div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr><th>อาจารย์</th><th class="text-end">ผ่านแล้ว</th><th style="width:40%">นับได้<?= $cap !== null ? ' (สูงสุด ' . fmt_hours($cap) . ' ชม./ท่าน)' : '' ?></th></tr>
+                </thead>
+                <tbody>
+                <?php foreach ($sum['teachers'] as $t): ?>
+                    <tr>
+                        <td><?= e($t['name']) ?> <div class="small text-muted"><?= $t['activity_count'] ?> กิจกรรม</div></td>
+                        <td class="text-end"><?= fmt_hours($t['hours']) ?></td>
+                        <td>
+                            <div class="d-flex justify-content-between small">
+                                <strong><?= fmt_hours($t['counted']) ?><?= $cap !== null ? ' / ' . fmt_hours($cap) : '' ?> ชม.</strong>
+                                <?php if ($t['over']): ?><span class="text-danger" title="ส่วนที่เกินไม่นับรวม">เกิน <?= fmt_hours($t['hours'] - $cap) ?> ชม. (ไม่นับ)</span>
+                                <?php elseif ($cap !== null && $t['counted'] >= $cap): ?><span class="text-success">ครบเพดาน</span><?php endif; ?>
+                            </div>
+                            <?php if ($cap !== null): ?><?= progress_bar((float) $t['counted'], $cap) ?><?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                <?php if (!$sum['teachers']): ?>
+                    <tr><td colspan="3" class="text-muted small text-center py-3">ยังไม่มีชั่วโมงที่บันทึกผล</td></tr>
+                <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php if ($cap !== null): ?>
+            <div class="card-footer bg-white small text-muted">* นักศึกษา 1 คน เก็บชั่วโมงจากอาจารย์ 1 ท่านได้สูงสุด <?= fmt_hours($cap) ?> ชม. ส่วนที่เกินจะไม่นับรวม</div>
+        <?php endif; ?>
+    </div>
+    <?php
+}
+
 /** ช่องค้นหา + เลือกนักศึกษาหลายคน (ใช้ /ajax/students) */
 function student_picker(array $preselected = []): void
 {

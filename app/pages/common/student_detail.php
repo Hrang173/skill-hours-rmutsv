@@ -17,8 +17,8 @@ if (!$st) {
     redirect_back('/');
 }
 
-// ฝ่ายทะเบียน: ซิงก์ข้อมูลจาก API มหาวิทยาลัย
-if (is_post() && input('action') === 'sync' && $me['role'] === 'registrar') {
+// ผู้ดูแลระบบ: ซิงก์ข้อมูลจาก API มหาวิทยาลัย
+if (is_post() && input('action') === 'sync' && $me['role'] === 'admin') {
     try {
         $ok = UniversitySync::syncStudent($st['student_code']);
         flash($ok ? 'success' : 'warning', $ok ? 'ซิงก์ข้อมูลจากระบบมหาวิทยาลัยแล้ว' : 'ไม่พบข้อมูลนักศึกษาคนนี้ใน API มหาวิทยาลัย');
@@ -48,7 +48,7 @@ $actions = '<a href="/print/form?student_id=' . $id . '" target="_blank" class="
 if ($me['role'] === 'teacher') {
     $actions .= ' <a href="/teacher/assign?student_id=' . $id . '" class="btn btn-outline-primary"><i class="bi bi-person-check me-1"></i>มอบหมายกิจกรรม</a>';
 }
-if ($me['role'] === 'registrar') {
+if (is_office()) {
     $actions .= ' <a href="/registrar/user/edit?id=' . $id . '" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>แก้ไขข้อมูล</a>';
 }
 
@@ -71,7 +71,7 @@ page_header(full_name($st), 'รหัสนักศึกษา ' . $st['stude
                     <dt class="col-5">โทรศัพท์</dt><dd class="col-7"><?= e($st['phone'] ?: '-') ?></dd>
                     <?php if ($st['synced_at']): ?><dt class="col-5">ซิงก์ล่าสุด</dt><dd class="col-7"><?= thai_date($st['synced_at'], true) ?></dd><?php endif; ?>
                 </dl>
-                <?php if ($me['role'] === 'registrar' && UniversityApiFactory::enabled()): ?>
+                <?php if ($me['role'] === 'admin' && UniversityApiFactory::enabled()): ?>
                     <form method="post" class="mt-2">
                         <?= csrf_field() ?>
                         <button name="action" value="sync" class="btn btn-sm btn-outline-secondary"><i class="bi bi-cloud-arrow-down me-1"></i>ซิงก์จาก API มหาวิทยาลัย</button>
@@ -96,16 +96,21 @@ page_header(full_name($st), 'รหัสนักศึกษา ' . $st['stude
                     <div class="col-sm-4">รอบันทึกผล: <strong><?= fmt_hours($sum['pending']) ?> ชม.</strong></div>
                     <div class="col-sm-4">ฝึกจริงทั้งหมด: <strong><?= fmt_hours($sum['raw']) ?> ชม.</strong></div>
                 </div>
-                <hr>
-                <div class="row g-2 small">
-                    <?php foreach ($sum['skills'] as $s): ?>
-                        <div class="col-md-6">
-                            <div class="d-flex justify-content-between"><span class="text-truncate me-2" title="<?= e($s['name']) ?>"><?= e($s['name']) ?></span><span class="text-nowrap"><?= fmt_hours($s['counted']) ?>/<?= fmt_hours($s['max_hours']) ?></span></div>
-                            <?= progress_bar((float) $s['counted'], (float) $s['max_hours']) ?>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-7"><?php teacher_hours_card($sum); ?></div>
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header bg-white fw-semibold">ชั่วโมงแยกตามทักษะ</div>
+            <ul class="list-group list-group-flush small">
+                <?php foreach ($sum['skills'] as $s): ?>
+                    <li class="list-group-item d-flex justify-content-between"><span><?= e($s['name']) ?></span><strong class="text-nowrap ms-2"><?= fmt_hours($s['hours']) ?> ชม.</strong></li>
+                <?php endforeach; ?>
+            </ul>
         </div>
     </div>
 </div>
@@ -115,7 +120,7 @@ page_header(full_name($st), 'รหัสนักศึกษา ' . $st['stude
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
-                <tr><th>วันที่</th><th>กิจกรรม</th><th>ทักษะ</th><th>อาจารย์ผู้ควบคุม</th><th>ภาค</th><th class="text-end">ชม.</th><th>สถานะ</th><th>ลายมือชื่อ</th></tr>
+                <tr><th>วันที่</th><th>กิจกรรม</th><th>ทักษะ</th><th>อาจารย์ผู้ควบคุม</th><th>ภาค</th><th class="text-end">ชม.</th><th>สถานะ</th><th>ลายมือชื่อ</th><?= $me['role'] === 'admin' ? '<th></th>' : '' ?></tr>
             </thead>
             <tbody>
             <?php foreach ($all as $r): ?>
@@ -141,6 +146,9 @@ page_header(full_name($st), 'รหัสนักศึกษา ' . $st['stude
                             <span class="small"><?= e($r['signer_name']) ?></span>
                         <?php endif; ?>
                     </td>
+                    <?php if ($me['role'] === 'admin'): ?>
+                        <td><a href="/admin/record?id=<?= $r['id'] ?>" class="btn btn-sm btn-light" title="แก้ไขรายการ"><i class="bi bi-pencil"></i></a></td>
+                    <?php endif; ?>
                 </tr>
             <?php endforeach; ?>
             <?php if (!$all): ?><tr><td colspan="8" class="text-center text-muted py-4">ยังไม่มีประวัติ</td></tr><?php endif; ?>

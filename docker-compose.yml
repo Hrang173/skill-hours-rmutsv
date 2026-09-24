@@ -9,6 +9,7 @@ services:
       # mount โค้ดเข้าไปตรงๆ แก้ไฟล์แล้วรีเฟรชเบราว์เซอร์ได้ทันที
       - ./app:/var/www/html/app
       - ./public:/var/www/html/public
+      - ./database:/var/www/html/database:ro
     environment:
       APP_NAME: ${APP_NAME:-ระบบบันทึกชั่วโมงทักษะวิชาชีพ}
       APP_URL: ${APP_URL:-http://localhost:8080}

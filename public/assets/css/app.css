@@ -70,6 +70,11 @@ a { text-decoration: none; }
     font-weight: 600;
 }
 
+.app-sidebar .nav-section {
+    margin: 1rem 1.25rem .35rem; padding-top: .75rem; border-top: 1px solid #e3e7ef;
+    font-size: .75rem; font-weight: 600; color: #8a93a6; letter-spacing: .03em;
+}
+
 .app-main { padding: 1.5rem; min-width: 0; }
 @media (min-width: 1200px) { .app-main { padding: 2rem 2.5rem; } }
 

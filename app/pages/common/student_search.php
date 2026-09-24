@@ -5,7 +5,7 @@ use App\Services\StudentQuery;
  * ค้นหานักศึกษา (อาจารย์ + ฝ่ายทะเบียน) ด้วยรหัสนักศึกษาหรือชื่อ-สกุล
  */
 $me = current_user();
-$isRegistrar = $me['role'] === 'registrar';
+$isRegistrar = is_office();
 
 $f = StudentQuery::filtersFromRequest();
 ['q' => $kw, 'program' => $program, 'done' => $done, 'year' => $year] = $f;

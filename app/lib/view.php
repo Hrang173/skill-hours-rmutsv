@@ -20,22 +20,34 @@ function nav_items(string $role): array
             ['/teacher/activity/new', 'plus-circle',    'สร้างกิจกรรม'],
             ['/teacher/assign',       'person-check',   'มอบหมายรายบุคคล'],
             ['/teacher/students',     'search',         'ค้นหานักศึกษา'],
-            ['/teacher/signature',    'pen',            'ลายเซ็นของฉัน'],
+            ['/signature',            'pen',            'ลายเซ็นของฉัน'],
         ],
-        'registrar' => [
-            ['/registrar',                 'speedometer2',     'ภาพรวม'],
-            ['/registrar/students',        'search',           'ค้นหานักศึกษา'],
-            ['/registrar/users',           'people',           'จัดการผู้ใช้'],
-            ['/registrar/import',          'upload',           'นำเข้านักศึกษา (CSV)'],
-            ['/registrar/skills',          'list-check',       'รายชื่อทักษะ'],
-            ['/registrar/semesters',       'calendar3',        'ภาคการศึกษา'],
-            ['/registrar/university-sync', 'cloud-arrow-down', 'API มหาวิทยาลัย'],
-            ['/registrar/api-keys',        'key',              'API Keys'],
-            ['/registrar/audit',           'journal-text',     'บันทึกการใช้งาน'],
-            ['/registrar/settings',        'gear',             'ตั้งค่าระบบ'],
+        'registrar' => office_nav('/registrar'),
+        'admin' => [
+            ...office_nav('/admin'),
+            ['-', '', 'ผู้ดูแลระบบ'],
+            ['/admin/university-sync', 'cloud-arrow-down', 'API มหาวิทยาลัย'],
+            ['/admin/api-keys',        'key',              'API Keys'],
+            ['/admin/audit',           'journal-text',     'บันทึกการใช้งาน'],
+            ['/admin/settings',        'gear',             'ตั้งค่าระบบ'],
         ],
         default => [],
     };
+}
+
+/** เมนูงานทะเบียน (ใช้ทั้งฝ่ายทะเบียนและ admin) */
+function office_nav(string $home): array
+{
+    return [
+        [$home,                      'speedometer2', 'ภาพรวม'],
+        ['/registrar/students',      'search',       'ค้นหานักศึกษา'],
+        ['/registrar/users',         'people',       'จัดการผู้ใช้'],
+        ['/registrar/import',        'upload',       'นำเข้านักศึกษา (CSV)'],
+        ['/registrar/skills',        'list-check',   'รายชื่อทักษะ'],
+        ['/registrar/semesters',     'calendar3',    'ภาคการศึกษา'],
+        ['/registrar/program-heads', 'award',        'หัวหน้าหลักสูตร'],
+        ['/signature',               'pen',          'ลายเซ็นของฉัน'],
+    ];
 }
 
 function layout_start(string $title, array $opts = []): void
@@ -101,6 +113,10 @@ function layout_start(string $title, array $opts = []): void
         <div class="offcanvas-body p-0">
             <nav class="nav flex-column w-100 py-3">
                 <?php foreach (nav_items($user['role']) as [$href, $icon, $label]):
+                    if ($href === '-') {
+                        echo '<div class="nav-section">' . e($label) . '</div>';
+                        continue;
+                    }
                     $active = $path === $href || ($href !== home_path() && str_starts_with($path, $href . '/')); ?>
                     <a class="nav-link <?= $active ? 'active' : '' ?>" href="<?= $href ?>">
                         <i class="bi bi-<?= $icon ?> me-2"></i><?= e($label) ?>

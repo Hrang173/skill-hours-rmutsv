@@ -8,7 +8,7 @@ if (is_post()) {
         $name = mb_substr((string) input('name', ''), 0, 100);
         if ($name === '') {
             flash('danger', 'กรุณาตั้งชื่อ key');
-            redirect('/registrar/api-keys');
+            redirect('/admin/api-keys');
         }
         $newKey = 'sk_' . bin2hex(random_bytes(24));
         q('INSERT INTO api_keys (name, key_prefix, key_hash, created_by) VALUES (?, ?, ?, ?)', [$name, substr($newKey, 0, 10), hash('sha256', $newKey), user_id()]);
@@ -17,7 +17,7 @@ if (is_post()) {
         q('UPDATE api_keys SET is_active = 0 WHERE id = ?', [input_int('id')]);
         audit('apikey.revoke', ['id' => input_int('id')]);
         flash('success', 'ยกเลิก key แล้ว');
-        redirect('/registrar/api-keys');
+        redirect('/admin/api-keys');
     }
 }
 $keys = q_all('SELECT * FROM api_keys ORDER BY id DESC');

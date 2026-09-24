@@ -87,11 +87,43 @@ table.record td.small { font-size: 12.5px; }
 .sheet-foot .summary { font-size: 13.5px; padding-top: 2mm; flex: 1; }
 .head-sign { width: 118mm; line-height: 2.1; font-size: 14px; }
 .head-sign .paren { padding-left: 11mm; }
+.head-sign .slot { position: relative; min-height: 1.35em; }
+.head-sign .slot .slot-sig { height: 12mm; max-width: 100%; object-fit: contain; vertical-align: bottom; margin-bottom: -1.5mm; }
+
+/* ---------- กล่องลงชื่อ (บนจอเท่านั้น) ---------- */
+.print-toolbar .btn-sign {
+    font-family: inherit; font-size: 15px; padding: 6px 14px; border-radius: 6px; border: 0; cursor: pointer;
+    background: #fff; color: #1e3a8a; font-weight: 600;
+}
+.sign-dialog {
+    width: min(620px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto;
+    border: 0; border-radius: 12px; padding: 20px 22px; font-family: inherit; font-size: 15px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+}
+.sign-dialog::backdrop { background: rgba(15, 23, 42, .45); }
+.sign-dialog h2 { font-size: 18px; margin: 0 0 6px; }
+.sign-dialog .hint { font-size: 13.5px; color: #555; margin: 0 0 12px; }
+.sign-dialog .hint .warn { color: #b45309; }
+.sign-dialog fieldset { border: 1px solid #dde2ec; border-radius: 10px; padding: 10px 14px 12px; margin: 0 0 12px; }
+.sign-dialog legend { font-weight: 700; padding: 0 6px; }
+.sign-dialog .seg { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 8px; }
+.sign-dialog .opt { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.sign-dialog .saved-thumb { height: 34px; border: 1px solid #e3e7ef; border-radius: 4px; background: #fff; }
+.sign-dialog .pad-wrap { margin-top: 6px; }
+.sign-dialog canvas { width: 100%; height: auto; border: 2px dashed #b8c2d8; border-radius: 8px; touch-action: none; cursor: crosshair; background: #fff; }
+.sign-dialog input[type=text] { width: 100%; font-family: inherit; font-size: 15px; padding: 6px 10px; border: 1px solid #c9d1e0; border-radius: 6px; }
+.sign-dialog menu { display: flex; align-items: center; gap: 8px; padding: 0; margin: 14px 0 0; }
+.sign-dialog menu .spacer { flex: 1; }
+.sign-dialog button { font-family: inherit; font-size: 15px; padding: 6px 14px; border-radius: 6px; border: 1px solid #c9d1e0; background: #fff; cursor: pointer; }
+.sign-dialog button.primary { background: #1e3a8a; border-color: #1e3a8a; color: #fff; font-weight: 600; }
+.sign-dialog button.link { border: 0; background: none; color: #1e3a8a; padding: 4px 6px; text-decoration: underline; }
+[hidden] { display: none !important; }
+
 .meta { margin-top: auto; padding-top: 3mm; font-size: 10.5px; color: #777; text-align: right; }
 
 @media print {
     body { background: #fff; }
-    .print-toolbar { display: none; }
+    .print-toolbar, .sign-dialog { display: none; }
     .sheet { margin: 0; box-shadow: none; width: auto; min-height: 190mm; padding: 0; }
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

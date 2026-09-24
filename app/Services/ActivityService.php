@@ -114,6 +114,30 @@ final class ActivityService
     }
 
     /**
+     * รายชื่อนักศึกษาที่มีชั่วโมง "ผ่าน" กับอาจารย์ท่านนี้ถึงเพดานแล้ว (อาจารย์ 1 ท่าน นับได้สูงสุด 25 ชม.)
+     * @param bool $exceedOnly true = เตือนเฉพาะคนที่ "เกิน" (ใช้หลังบันทึกผล), false = ถึงหรือเกิน (ใช้ตอนมอบหมาย)
+     * @return string|null ข้อความเตือน หรือ null ถ้าไม่มีใคร
+     */
+    public static function capWarning(int $teacherId, array $studentIds, bool $exceedOnly = false): ?string
+    {
+        $cap = HoursService::teacherCap();
+        if ($cap === null || !$studentIds) {
+            return null;
+        }
+        $hours = HoursService::hoursWithTeacher($teacherId, $studentIds);
+        $over = array_filter($hours, fn($h) => $exceedOnly ? $h > $cap : $h >= $cap);
+        if (!$over) {
+            return null;
+        }
+        $in = implode(',', array_fill(0, count($over), '?'));
+        $names = [];
+        foreach (q_all("SELECT u.id, u.prefix, u.first_name, u.last_name FROM users u WHERE u.id IN ($in)", array_keys($over)) as $u) {
+            $names[] = full_name($u) . ' (' . fmt_hours($over[$u['id']]) . ' ชม.)';
+        }
+        return 'นักศึกษาต่อไปนี้มีชั่วโมงกับคุณ' . ($exceedOnly ? 'เกิน' : 'ครบ') . 'เพดาน ' . fmt_hours($cap) . ' ชม. แล้ว ชั่วโมงส่วนที่เกินจะไม่ถูกนับรวม: ' . implode(', ', $names);
+    }
+
+    /**
      * บันทึกผลการฝึก + ลายเซ็นอาจารย์ผู้ควบคุม ให้กับหลายรายการพร้อมกัน
      */
     public static function recordResults(array $activity, array $participationIds, array $data): int

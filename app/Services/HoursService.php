@@ -9,7 +9,8 @@ namespace App\Services;
  * กติกา (ตามเอกสาร "รายชื่อทักษะวิชาชีพ"):
  *  - แผน 4 ปี ต้องฝึกอย่างน้อย 100 ชม. / แผนเทียบโอน อย่างน้อย 50 ชม.
  *  - นับเฉพาะรายการที่อาจารย์บันทึกผล "ผ่าน" แล้ว
- *  - แต่ละทักษะนับได้สูงสุดตาม max_hours (ค่าเริ่มต้น 25 ชม.) ถ้าเปิด enforce_skill_cap
+ *  - นักศึกษา 1 คน เก็บชั่วโมงจากอาจารย์ 1 ท่าน (ผู้ควบคุมกิจกรรม) นับได้สูงสุด 25 ชม.
+ *    (ตั้งค่า max_hours_per_teacher / enforce_teacher_cap) ส่วนเกินยังแสดงในประวัติแต่ไม่นับรวม
  */
 final class HoursService
 {
@@ -22,7 +23,13 @@ final class HoursService
 
     public static function capEnabled(): bool
     {
-        return setting('enforce_skill_cap', '1') === '1';
+        return setting('enforce_teacher_cap', '1') === '1';
+    }
+
+    /** ชั่วโมงสูงสุดที่นับได้จากอาจารย์ 1 ท่าน (null = ไม่จำกัด) */
+    public static function teacherCap(): ?float
+    {
+        return self::capEnabled() ? (float) setting('max_hours_per_teacher', 25) : null;
     }
 
     /**
@@ -30,14 +37,14 @@ final class HoursService
      */
     public static function earnedSql(): string
     {
-        $expr = self::capEnabled() ? 'LEAST(x.h, x.max_hours)' : 'x.h';
+        $cap = self::teacherCap();
+        $expr = $cap !== null ? "LEAST(x.h, $cap)" : 'x.h';
         return "SELECT x.student_id, SUM($expr) AS earned
-                  FROM (SELECT p.student_id, a.skill_id, SUM(p.hours_awarded) AS h, sk.max_hours
+                  FROM (SELECT p.student_id, a.teacher_id, SUM(p.hours_awarded) AS h
                           FROM participations p
                           JOIN activities a ON a.id = p.activity_id
-                          JOIN skills sk    ON sk.id = a.skill_id
                          WHERE p.status = 'completed' AND p.result = 'pass'
-                         GROUP BY p.student_id, a.skill_id, sk.max_hours) x
+                         GROUP BY p.student_id, a.teacher_id) x
                  GROUP BY x.student_id";
     }
 
@@ -50,15 +57,36 @@ final class HoursService
     }
 
     /**
+     * ชั่วโมงที่ "ผ่าน" แล้วของนักศึกษาหลายคน กับอาจารย์ 1 ท่าน → [student_id => hours]
+     */
+    public static function hoursWithTeacher(int $teacherId, array $studentIds): array
+    {
+        $studentIds = array_values(array_unique(array_map('intval', $studentIds)));
+        if (!$studentIds) {
+            return [];
+        }
+        $in = implode(',', array_fill(0, count($studentIds), '?'));
+        $rows = q_all(
+            "SELECT p.student_id, SUM(p.hours_awarded) AS h
+               FROM participations p JOIN activities a ON a.id = p.activity_id
+              WHERE a.teacher_id = ? AND p.status = 'completed' AND p.result = 'pass' AND p.student_id IN ($in)
+              GROUP BY p.student_id",
+            array_merge([$teacherId], $studentIds)
+        );
+        return array_column(array_map(fn($r) => [$r['student_id'], (float) $r['h']], $rows), 1, 0);
+    }
+
+    /**
      * สรุปชั่วโมงของนักศึกษา 1 คน
      */
     public static function summary(int $studentId, ?string $programType): array
     {
         $required = self::requiredHours($programType);
-        $cap = self::capEnabled();
+        $cap = self::teacherCap();
 
+        // แยกตามทักษะ (แสดงข้อมูล ไม่มีเพดาน)
         $skills = q_all(
-            "SELECT sk.id, sk.code, sk.name, sk.max_hours,
+            "SELECT sk.id, sk.code, sk.name,
                     CONCAT(o.prefix, o.first_name, ' ', o.last_name) AS owner_name,
                     COALESCE(SUM(CASE WHEN p.status = 'completed' AND p.result = 'pass' THEN p.hours_awarded END), 0) AS hours,
                     COUNT(CASE WHEN p.status = 'completed' AND p.result = 'pass' THEN 1 END) AS activity_count
@@ -67,23 +95,12 @@ final class HoursService
                LEFT JOIN activities a ON a.skill_id = sk.id
                LEFT JOIN participations p ON p.activity_id = a.id AND p.student_id = ?
               WHERE sk.is_active = 1 OR p.id IS NOT NULL
-              GROUP BY sk.id, sk.code, sk.name, sk.max_hours, owner_name
+              GROUP BY sk.id, sk.code, sk.name, owner_name
               ORDER BY sk.sort_order, sk.id",
             [$studentId]
         );
 
-        $raw = 0.0;
-        $earned = 0.0;
-        foreach ($skills as &$s) {
-            $h = (float) $s['hours'];
-            $s['counted'] = $cap ? min($h, (float) $s['max_hours']) : $h;
-            $s['over'] = $cap && $h > (float) $s['max_hours'];
-            $raw += $h;
-            $earned += $s['counted'];
-        }
-        unset($s);
-
-        // แยกตามอาจารย์ผู้ควบคุมกิจกรรม
+        // แยกตามอาจารย์ผู้ควบคุมกิจกรรม — ตัวนี้ใช้คิดชั่วโมงที่นับได้
         $teachers = q_all(
             "SELECT t.id, CONCAT(t.prefix, t.first_name, ' ', t.last_name) AS name,
                     SUM(p.hours_awarded) AS hours, COUNT(*) AS activity_count
@@ -95,6 +112,17 @@ final class HoursService
               ORDER BY hours DESC",
             [$studentId]
         );
+
+        $raw = 0.0;
+        $earned = 0.0;
+        foreach ($teachers as &$t) {
+            $h = (float) $t['hours'];
+            $t['counted'] = $cap !== null ? min($h, $cap) : $h;
+            $t['over'] = $cap !== null && $h > $cap;
+            $raw += $h;
+            $earned += $t['counted'];
+        }
+        unset($t);
 
         // ชั่วโมงที่รอบันทึกผล (อนุมัติแล้วแต่ยังไม่เสร็จ)
         $pending = (float) q_val(

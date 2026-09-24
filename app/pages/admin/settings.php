@@ -2,11 +2,11 @@
 $fields = [
     'required_hours_4year'    => ['ชั่วโมงที่ต้องเก็บ แผน 4 ปี', 'number'],
     'required_hours_transfer' => ['ชั่วโมงที่ต้องเก็บ แผนเทียบโอน', 'number'],
-    'enforce_skill_cap'       => ['จำกัดชั่วโมงสูงสุดต่อทักษะ (ส่วนเกินไม่นับ)', 'bool'],
+    'max_hours_per_teacher'   => ['ชั่วโมงสูงสุดที่นักศึกษา 1 คน เก็บได้จากอาจารย์ 1 ท่าน', 'number'],
+    'enforce_teacher_cap'     => ['บังคับเพดานชั่วโมงต่ออาจารย์ (ส่วนที่เกินไม่นับรวม)', 'bool'],
     'university_name'         => ['ชื่อมหาวิทยาลัย/วิทยาเขต (หัวกระดาษ)', 'text'],
     'faculty_name'            => ['ชื่อคณะ (หัวกระดาษ)', 'text'],
     'default_major'           => ['สาขาวิชาเริ่มต้น', 'text'],
-    'program_head_name'       => ['ชื่อหัวหน้าหลักสูตร (ท้ายแบบบันทึก)', 'text'],
     'print_rows_per_page'     => ['จำนวนแถวต่อหน้าในแบบบันทึก (3-10)', 'number'],
 ];
 
@@ -20,7 +20,7 @@ if (is_post()) {
     }
     audit('settings.update');
     flash('success', 'บันทึกการตั้งค่าแล้ว');
-    redirect('/registrar/settings');
+    redirect('/admin/settings');
 }
 
 layout_start('ตั้งค่าระบบ');
@@ -43,6 +43,7 @@ page_header('ตั้งค่าระบบ', 'เกณฑ์ชั่วโ
             </div>
         <?php endforeach; ?>
         <div class="alert alert-light border small mb-0">
+            หัวหน้าหลักสูตร (ท้ายแบบบันทึก) กำหนดได้ที่เมนู <a href="/registrar/program-heads">หัวหน้าหลักสูตร</a><br>
             ค่าการเชื่อมต่อฐานข้อมูลและ API มหาวิทยาลัย ตั้งในไฟล์ <code>.env</code> / <code>docker-compose.yml</code>
         </div>
     </div>

@@ -48,6 +48,7 @@ function home_path(?string $role = null): string
         'student'   => '/student',
         'teacher'   => '/teacher',
         'registrar' => '/registrar',
+        'admin'     => '/admin',
         default     => '/login',
     };
 }
@@ -134,6 +135,26 @@ function attempt_login(string $username, string $password): array
     return [null, 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'];
 }
 
+const ALL_ROLES = ['student', 'teacher', 'registrar', 'admin'];
+const STAFF_ROLES = ['teacher', 'registrar', 'admin'];  // ดูข้อมูลนักศึกษาได้ทุกคน
+const OFFICE_ROLES = ['registrar', 'admin'];            // งานทะเบียน
+const ADMIN_ROLES = ['admin'];                          // ตั้งค่าระบบ / API
+
+function is_office(): bool
+{
+    return has_role(...OFFICE_ROLES);
+}
+
+/** บทบาทของบัญชีที่ผู้ใช้ปัจจุบันจัดการได้ (ฝ่ายทะเบียน: นักศึกษา/อาจารย์, admin: ทุกบทบาท) */
+function manageable_roles(): array
+{
+    return match (current_user()['role'] ?? null) {
+        'admin'     => ALL_ROLES,
+        'registrar' => ['student', 'teacher'],
+        default     => [],
+    };
+}
+
 /** ตรวจว่าผู้ใช้ปัจจุบันดูข้อมูลของนักศึกษาคนนี้ได้หรือไม่ */
 function can_view_student(int $studentUserId): bool
 {
@@ -141,5 +162,5 @@ function can_view_student(int $studentUserId): bool
     if (!$u) {
         return false;
     }
-    return $u['role'] === 'teacher' || $u['role'] === 'registrar' || (int) $u['id'] === $studentUserId;
+    return in_array($u['role'], STAFF_ROLES, true) || (int) $u['id'] === $studentUserId;
 }

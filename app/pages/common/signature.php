@@ -13,14 +13,16 @@ if (is_post()) {
         } else {
             q('UPDATE users SET signature_data = ? WHERE id = ?', [$sig, $me['id']]);
             audit('signature.save');
-            flash('success', 'บันทึกลายเซ็นเรียบร้อย ใช้ได้ทันทีตอนบันทึกผลการฝึก');
+            flash('success', 'บันทึกลายเซ็นเรียบร้อย พร้อมใช้งานแล้ว');
         }
     }
-    redirect('/teacher/signature');
+    redirect('/signature');
 }
 
 layout_start('ลายเซ็นของฉัน');
-page_header('ลายเซ็นออนไลน์', 'บันทึกลายเซ็นไว้ล่วงหน้า เพื่อใช้ลงช่อง "ลายมือชื่ออาจารย์ผู้ควบคุม" ในแบบบันทึกการฝึกทักษะ');
+page_header('ลายเซ็นออนไลน์', $me['role'] === 'teacher'
+    ? 'บันทึกลายเซ็นไว้ล่วงหน้า เพื่อใช้ลงช่อง "ลายมือชื่ออาจารย์ผู้ควบคุม" และช่องลงชื่อท้ายแบบบันทึกการฝึกทักษะ'
+    : 'บันทึกลายเซ็นไว้ล่วงหน้า เพื่อใช้ลงชื่อท้ายแบบบันทึกการฝึกทักษะวิชาชีพ');
 ?>
 <div class="row g-3">
     <div class="col-lg-7">
@@ -56,7 +58,7 @@ page_header('ลายเซ็นออนไลน์', 'บันทึกล
             </div>
         </div>
         <div class="alert alert-light border small mt-3">
-            <i class="bi bi-info-circle me-1"></i>ตอนบันทึกผลการฝึก สามารถเลือกได้ว่าจะใช้ <strong>ลายเซ็นออนไลน์</strong> หรือ <strong>กรอกชื่อ</strong> ลงในแบบบันทึก
+            <i class="bi bi-info-circle me-1"></i>ทุกครั้งที่ลงชื่อ (ตอนบันทึกผล หรือช่องลงชื่อท้ายแบบบันทึก) เลือกได้ว่าจะใช้ <strong>ลายเซ็นออนไลน์</strong> หรือ <strong>พิมพ์ชื่อ</strong>
         </div>
     </div>
 </div>

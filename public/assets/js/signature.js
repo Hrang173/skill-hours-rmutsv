@@ -96,6 +96,8 @@
         }
     }
 
+    window.SignaturePad = SignaturePad; // ใช้ในหน้าพิมพ์แบบบันทึก (print-sign.js)
+
     // ---------- หน้า "ลายเซ็นของฉัน" / ช่องเซ็นในหน้าบันทึกผล ----------
     document.querySelectorAll('[data-signature-pad]').forEach(canvas => {
         const scope = canvas.closest('[data-signature-chooser], [data-signature-form]') || document;

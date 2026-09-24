@@ -15,5 +15,6 @@ COPY docker/php/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 WORKDIR /var/www/html
 COPY app ./app
 COPY public ./public
+COPY database ./database
 
 RUN chown -R www-data:www-data /var/www/html

@@ -7,7 +7,7 @@ use App\Services\UniversitySync;
 
 /**
  * REST API v1 — ให้ระบบภายนอก (เช่น ระบบทะเบียนของมหาวิทยาลัย) เชื่อมต่อ
- * ยืนยันตัวตนด้วย API key (สร้างได้ที่เมนู ฝ่ายทะเบียน → API Keys)
+ * ยืนยันตัวตนด้วย API key (สร้างได้ที่เมนู ผู้ดูแลระบบ → API Keys)
  */
 
 header('Access-Control-Allow-Origin: *');
@@ -76,9 +76,9 @@ if ($route === 'v1/health' || $route === 'v1' || $route === '') {
 api_auth();
 
 if ($method === 'GET' && $route === 'v1/skills') {
-    $rows = q_all("SELECT sk.code, sk.name, sk.max_hours, CONCAT(u.prefix, u.first_name, ' ', u.last_name) AS owner
+    $rows = q_all("SELECT sk.code, sk.name, CONCAT(u.prefix, u.first_name, ' ', u.last_name) AS owner
                      FROM skills sk LEFT JOIN users u ON u.id = sk.owner_id WHERE sk.is_active = 1 ORDER BY sk.sort_order");
-    json_response(['data' => array_map(fn($r) => ['code' => $r['code'], 'name' => $r['name'], 'max_hours' => (float) $r['max_hours'], 'owner' => $r['owner']], $rows)]);
+    json_response(['data' => array_map(fn($r) => ['code' => $r['code'], 'name' => $r['name'], 'owner' => $r['owner']], $rows)]);
 }
 
 if ($method === 'GET' && $route === 'v1/students') {
@@ -105,8 +105,12 @@ if ($method === 'GET' && preg_match('#^v1/students/([^/]+)/summary$#', $route, $
         'remaining_hours' => $sum['remaining'],
         'pending_hours'   => $sum['pending'],
         'completed'       => $sum['complete'],
+        'max_hours_per_teacher' => $sum['cap'],
+        'teachers'        => array_map(fn($t) => [
+            'name' => $t['name'], 'hours' => (float) $t['hours'], 'counted_hours' => (float) $t['counted'],
+        ], $sum['teachers']),
         'skills'          => array_map(fn($s) => [
-            'code' => $s['code'], 'name' => $s['name'], 'hours' => (float) $s['hours'], 'counted_hours' => (float) $s['counted'], 'max_hours' => (float) $s['max_hours'],
+            'code' => $s['code'], 'name' => $s['name'], 'hours' => (float) $s['hours'],
         ], $sum['skills']),
     ]]);
 }

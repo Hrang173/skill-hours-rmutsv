@@ -37,7 +37,7 @@ $sessions = ActivityService::sessionsFor(array_column($activities, 'id'));
 layout_start('ภาพรวม');
 page_header(
     'สวัสดี ' . full_name($me),
-    'อาจารย์ผู้ควบคุมการฝึกทักษะวิชาชีพ',
+    'อาจารย์ผู้ควบคุมการฝึกทักษะวิชาชีพ' . ($me['head_of_major'] ? ' · หัวหน้าหลักสูตร' . $me['head_of_major'] : ''),
     '<a href="/teacher/activity/new" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>สร้างกิจกรรม</a>
      <a href="/teacher/assign" class="btn btn-outline-primary"><i class="bi bi-person-check me-1"></i>มอบหมายรายบุคคล</a>'
 );

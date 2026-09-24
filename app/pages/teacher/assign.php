@@ -40,6 +40,9 @@ if (is_post()) {
         db()->commit();
         audit('activity.assign_create', ['activity_id' => $activityId, 'students' => $n]);
         flash('success', "มอบหมาย \"{$data['title']}\" ให้นักศึกษา $n คนเรียบร้อย");
+        if ($warn = ActivityService::capWarning((int) $me['id'], $studentIds)) {
+            flash('warning', $warn);
+        }
         redirect('/teacher/activity', ['id' => $activityId]);
     }
     keep_old();

@@ -73,8 +73,9 @@ layout_start('เข้าสู่ระบบ');
                 <details class="mt-4 small text-muted">
                     <summary>บัญชีทดลอง (แสดงเฉพาะโหมดพัฒนา)</summary>
                     <table class="table table-sm small mt-2 mb-0">
+                        <tr><td>ผู้ดูแลระบบ</td><td><code>admin</code></td></tr>
                         <tr><td>ฝ่ายทะเบียน</td><td><code>registrar</code></td></tr>
-                        <tr><td>อาจารย์</td><td><code>naret</code>, <code>phumin</code>, <code>sayamon</code></td></tr>
+                        <tr><td>อาจารย์</td><td><code>naret</code>, <code>sayamon</code>, <code>chaiwat</code> (หัวหน้าหลักสูตร)</td></tr>
                         <tr><td>นักศึกษา 4 ปี</td><td><code>166404140001</code></td></tr>
                         <tr><td>นักศึกษาเทียบโอน</td><td><code>167404150001</code></td></tr>
                         <tr><td>รหัสผ่าน</td><td><code>password123</code></td></tr>

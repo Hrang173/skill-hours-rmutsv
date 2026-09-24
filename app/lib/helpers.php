@@ -257,7 +257,7 @@ function program_label(?string $type): string
 
 function role_label(string $role): string
 {
-    return ['student' => 'นักศึกษา', 'teacher' => 'อาจารย์', 'registrar' => 'ฝ่ายทะเบียน'][$role] ?? $role;
+    return ['student' => 'นักศึกษา', 'teacher' => 'อาจารย์', 'registrar' => 'ฝ่ายทะเบียน', 'admin' => 'ผู้ดูแลระบบ'][$role] ?? $role;
 }
 
 function participation_badge(array $p): string

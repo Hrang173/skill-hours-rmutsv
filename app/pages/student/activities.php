@@ -1,7 +1,9 @@
 <?php
 use App\Services\ActivityService;
+use App\Services\HoursService;
 
 $me = current_user();
+$cap = HoursService::teacherCap();
 
 // ส่งคำขอ / ยกเลิกคำขอ
 if (is_post()) {
@@ -19,7 +21,10 @@ if (is_post()) {
     if ($action === 'request') {
         $deadlinePassed = $act['register_deadline'] && strtotime($act['register_deadline']) < time();
         $full = $act['capacity'] !== null && (int) $act['joined_count'] >= (int) $act['capacity'];
-        if ($act['status'] !== 'open' || $deadlinePassed) {
+        $withTeacher = HoursService::hoursWithTeacher((int) $act['teacher_id'], [$me['id']])[$me['id']] ?? 0.0;
+        if ($cap !== null && $withTeacher >= $cap) {
+            flash('danger', 'คุณเก็บชั่วโมงกับ ' . $act['teacher_name'] . ' ครบ ' . fmt_hours($cap) . ' ชม. แล้ว (อาจารย์ 1 ท่าน นับได้สูงสุด ' . fmt_hours($cap) . ' ชม.) กรุณาเลือกกิจกรรมของอาจารย์ท่านอื่น');
+        } elseif ($act['status'] !== 'open' || $deadlinePassed) {
             flash('danger', 'กิจกรรมนี้ปิดรับสมัครแล้ว');
         } elseif ($full) {
             flash('danger', 'กิจกรรมนี้มีผู้เข้าร่วมเต็มแล้ว');
@@ -68,14 +73,16 @@ if ($kw !== '') {
 $activities = q_all(
     "SELECT a.*, sk.name AS skill_name, CONCAT(t.prefix, t.first_name, ' ', t.last_name) AS teacher_name,
             (SELECT COUNT(*) FROM participations p WHERE p.activity_id = a.id AND p.status IN ('approved','completed')) AS joined_count,
-            my.status AS my_status, my.source AS my_source
+            my.status AS my_status, my.source AS my_source,
+            (SELECT COALESCE(SUM(p2.hours_awarded), 0) FROM participations p2 JOIN activities a2 ON a2.id = p2.activity_id
+              WHERE a2.teacher_id = a.teacher_id AND p2.student_id = ? AND p2.status = 'completed' AND p2.result = 'pass') AS my_teacher_hours
        FROM activities a
        JOIN skills sk ON sk.id = a.skill_id
        JOIN users t ON t.id = a.teacher_id
        LEFT JOIN participations my ON my.activity_id = a.id AND my.student_id = ?
       WHERE " . implode(' AND ', $where) . "
       ORDER BY (SELECT MIN(session_date) FROM activity_sessions s WHERE s.activity_id = a.id), a.id DESC",
-    array_merge([$me['id']], $params)
+    array_merge([$me['id'], $me['id']], $params)
 );
 $sessions = ActivityService::sessionsFor(array_column($activities, 'id'));
 $skills = q_all('SELECT id, name FROM skills WHERE is_active = 1 ORDER BY sort_order');
@@ -99,7 +106,9 @@ page_header('กิจกรรมที่เปิดรับ', 'เลือ
 <div class="row g-3">
     <?php foreach ($activities as $a):
         $full = $a['capacity'] !== null && (int) $a['joined_count'] >= (int) $a['capacity'];
-        $closed = $a['register_deadline'] && strtotime($a['register_deadline']) < time(); ?>
+        $closed = $a['register_deadline'] && strtotime($a['register_deadline']) < time();
+        $teacherLeft = $cap !== null ? max(0, $cap - (float) $a['my_teacher_hours']) : null;
+        $capReached = $teacherLeft !== null && $teacherLeft <= 0; ?>
         <div class="col-md-6 col-xl-4">
             <div class="card h-100 activity-card">
                 <div class="card-body d-flex flex-column">
@@ -115,6 +124,12 @@ page_header('กิจกรรมที่เปิดรับ', 'เลือ
                         ผู้เข้าร่วม <?= (int) $a['joined_count'] ?><?= $a['capacity'] !== null ? ' / ' . (int) $a['capacity'] : '' ?> คน
                         <?php if ($a['register_deadline']): ?> · ปิดรับ <?= thai_date($a['register_deadline'], true) ?><?php endif; ?>
                     </div>
+                    <?php if ($teacherLeft !== null && (float) $a['my_teacher_hours'] > 0): ?>
+                        <div class="small mt-1 <?= $capReached ? 'text-danger' : ($teacherLeft < (float) $a['hours'] ? 'text-warning-emphasis' : 'text-muted') ?>">
+                            <i class="bi bi-info-circle me-1"></i>คุณมีชั่วโมงกับอาจารย์ท่านนี้แล้ว <?= fmt_hours($a['my_teacher_hours']) ?>/<?= fmt_hours($cap) ?> ชม.
+                            <?= $capReached ? '(ครบแล้ว)' : ($teacherLeft < (float) $a['hours'] ? '— นับเพิ่มได้อีกแค่ ' . fmt_hours($teacherLeft) . ' ชม.' : '') ?>
+                        </div>
+                    <?php endif; ?>
                     <div class="mt-auto pt-3">
                         <?php if ($a['my_status'] && !in_array($a['my_status'], ['cancelled', 'rejected'], true)): ?>
                             <div class="d-flex align-items-center justify-content-between">
@@ -127,8 +142,8 @@ page_header('กิจกรรมที่เปิดรับ', 'เลือ
                                     </form>
                                 <?php endif; ?>
                             </div>
-                        <?php elseif ($full || $closed): ?>
-                            <button class="btn btn-secondary w-100" disabled><?= $full ? 'เต็มแล้ว' : 'ปิดรับสมัครแล้ว' ?></button>
+                        <?php elseif ($full || $closed || $capReached): ?>
+                            <button class="btn btn-secondary w-100" disabled><?= $capReached ? 'ครบ ' . fmt_hours($cap) . ' ชม. กับอาจารย์ท่านนี้แล้ว' : ($full ? 'เต็มแล้ว' : 'ปิดรับสมัครแล้ว') ?></button>
                         <?php else: ?>
                             <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#requestModal"
                                     data-activity-id="<?= $a['id'] ?>" data-activity-title="<?= e($a['title']) ?>">

@@ -5,7 +5,11 @@ if ($id && !$u) {
     flash('danger', 'ไม่พบผู้ใช้');
     redirect('/registrar/users');
 }
-$role = $u['role'] ?? (in_array(input('role'), ['student', 'teacher', 'registrar'], true) ? input('role') : 'student');
+$role = $u['role'] ?? (in_array(input('role'), ALL_ROLES, true) ? input('role') : 'student');
+if (!in_array($role, manageable_roles(), true)) {
+    flash('danger', 'คุณไม่มีสิทธิ์จัดการบัญชี' . role_label($role));
+    redirect('/registrar/users');
+}
 $errors = [];
 
 if (is_post()) {

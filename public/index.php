@@ -9,6 +9,9 @@ require dirname(__DIR__) . '/app/bootstrap.php';
 $path = trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
 
 try {
+    // อัปเดตโครงสร้างฐานข้อมูลอัตโนมัติ (ถ้ามี migration ใหม่)
+    App\Services\Migrator::run();
+
     // REST API สำหรับระบบภายนอก (ไม่ใช้ session/CSRF แต่ใช้ API key)
     if ($path === 'api' || str_starts_with($path, 'api/')) {
         require APP_PATH . '/api/router.php';
