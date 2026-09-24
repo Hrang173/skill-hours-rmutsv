@@ -52,7 +52,7 @@ if ($semesterId && isset($semMap[$semesterId])) {
     $semText = implode(', ', $labels);
 }
 
-$perPage = max(3, min(10, (int) setting('print_rows_per_page', 5)));
+$perPage = max(3, min(10, (int) setting('print_rows_per_page', 4)));
 $pages = array_chunk($records, $perPage) ?: [[]];
 $pageCount = count($pages);
 $periodHours = array_sum(array_map(fn($r) => $r['result'] === 'pass' ? (float) $r['hours_awarded'] : 0, $records));
@@ -251,6 +251,20 @@ window.PRINT_SIGN = <?= json_encode([
 <?php endif; ?>
 
 <script>
+// กันไม่ให้ 1 แผ่นล้นไปหน้าถัดไป: ถ้าเนื้อหาสูงเกินพื้นที่พิมพ์ (~185 มม.) ให้ย่อแผ่นนั้นลงก่อนสั่งพิมพ์
+(function () {
+    const MM = 96 / 25.4, MAX_H = 185 * MM;
+    const fit = () => document.querySelectorAll('.sheet').forEach(sheet => {
+        sheet.style.zoom = '';
+        const top = sheet.getBoundingClientRect().top + parseFloat(getComputedStyle(sheet).paddingTop);
+        const bottom = sheet.querySelector('.meta').getBoundingClientRect().top;
+        const h = bottom - top + 6 * MM;
+        if (h > MAX_H) sheet.style.zoom = (MAX_H / h).toFixed(3);
+    });
+    window.addEventListener('beforeprint', fit);
+    window.addEventListener('afterprint', () => document.querySelectorAll('.sheet').forEach(s => { s.style.zoom = ''; }));
+})();
+
 // checkbox "แสดงสรุป": ถ้าไม่ติ๊ก ให้ส่งค่า 0
 document.querySelector('input[name=summary][type=checkbox]').addEventListener('change', function () {
     document.querySelector('input[name=summary][type=hidden]').disabled = this.checked;

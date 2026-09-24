@@ -15,7 +15,7 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('faculty_name',            'คณะวิศวกรรมศาสตร์และเทคโนโลยี'),
 ('default_major',           'วิศวกรรมคอมพิวเตอร์และการสื่อสาร'),
 ('program_head_name',       ''),
-('print_rows_per_page',     '5');
+('print_rows_per_page',     '4');
 
 -- ---------------------------------------------------------------- users
 INSERT INTO users (id, username, password_hash, role, prefix, first_name, last_name, email) VALUES
