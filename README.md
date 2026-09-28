@@ -62,6 +62,22 @@ docker compose down -v
 
 ---
 
+## ติดตั้งบนเซิร์ฟเวอร์ Ubuntu (เช่น VM บน Proxmox)
+
+บนเซิร์ฟเวอร์ Ubuntu 22.04 / 24.04 พิมพ์แค่นี้ (สคริปต์จะติดตั้ง Docker, สร้าง `.env` พร้อมสุ่มรหัสผ่านฐานข้อมูล แล้วเปิดระบบให้):
+
+```bash
+git clone https://github.com/Hrang173/skill-hours-rmutsv.git
+cd skill-hours-rmutsv
+bash deploy/setup-server.sh
+```
+
+เสร็จแล้วเปิด `http://<IP ของเซิร์ฟเวอร์>:8080` จากเครื่องในวงแลนเดียวกัน · อัปเดตโค้ดครั้งต่อไป: `git pull && bash deploy/setup-server.sh`
+
+> **Proxmox Console วางข้อความไม่ได้?** แนะนำต่อ SSH จาก Windows แทน (เปิด PowerShell แล้วพิมพ์ `ssh project@<IP>`) — ในหน้าต่างนั้นคลิกขวาเพื่อวางคำสั่งได้ปกติ
+
+---
+
 ## ความสามารถของระบบ
 
 ### นักศึกษา
