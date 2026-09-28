@@ -75,7 +75,12 @@ layout_start('เข้าสู่ระบบ');
                     <table class="table table-sm small mt-2 mb-0">
                         <tr><td>ผู้ดูแลระบบ</td><td><code>admin</code></td></tr>
                         <tr><td>ฝ่ายทะเบียน</td><td><code>registrar</code></td></tr>
-                        <tr><td>อาจารย์</td><td><code>naret</code>, <code>sayamon</code>, <code>chaiwat</code> (หัวหน้าหลักสูตร)</td></tr>
+                        <?php
+                        // หัวหน้าหลักสูตรดึงจากฐานข้อมูล (ตามที่ตั้งในเมนู "หัวหน้าหลักสูตร")
+                        $heads = array_column(q_all("SELECT username FROM users WHERE role = 'teacher' AND is_active = 1 AND head_of_major IS NOT NULL ORDER BY username"), 'username');
+                        $demoTeachers = array_values(array_unique(array_merge(['naret', 'sayamon'], $heads)));
+                        ?>
+                        <tr><td>อาจารย์</td><td><?= implode(', ', array_map(fn($u) => '<code>' . e($u) . '</code>' . (in_array($u, $heads, true) ? ' (หัวหน้าหลักสูตร)' : ''), $demoTeachers)) ?></td></tr>
                         <tr><td>นักศึกษา 4 ปี</td><td><code>166404140001</code></td></tr>
                         <tr><td>นักศึกษาเทียบโอน</td><td><code>167404150001</code></td></tr>
                         <tr><td>รหัสผ่าน</td><td><code>password123</code></td></tr>
