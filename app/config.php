@@ -21,6 +21,8 @@ return [
     'auth' => [
         // local | hybrid (ดู .env.example)
         'mode' => env('AUTH_MODE', 'local'),
+        // ลิงก์ "ลืมรหัสผ่าน?" ในหน้าเข้าสู่ระบบ (ระบบ e-Passport ของมหาวิทยาลัย) — ว่าง = ไม่แสดง
+        'forgot_password_url' => env('FORGOT_PASSWORD_URL', 'https://epassport.rmutsv.ac.th/forgot-pass#/forgot-pass-std'),
     ],
 
     // ---------------------------------------------------------------

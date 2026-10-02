@@ -4,6 +4,20 @@
 
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
+    // ---------- ปุ่มแสดง/ซ่อนรหัสผ่าน ----------
+    document.querySelectorAll('[data-toggle-password]').forEach(btn => {
+        const input = document.querySelector(btn.dataset.togglePassword);
+        if (!input) return;
+        btn.addEventListener('click', () => {
+            const show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            btn.querySelector('i').className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+            btn.title = show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน';
+            btn.setAttribute('aria-label', btn.title);
+            input.focus();
+        });
+    });
+
     // ---------- เลือกทั้งหมด (checkbox) ----------
     document.querySelectorAll('[data-check-all]').forEach(master => {
         master.addEventListener('change', () => {

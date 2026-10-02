@@ -60,10 +60,18 @@ layout_start('เข้าสู่ระบบ');
                     </div>
                 </div>
                 <div class="mb-4">
-                    <label class="form-label">รหัสผ่าน</label>
+                    <div class="d-flex justify-content-between align-items-baseline">
+                        <label class="form-label" for="password">รหัสผ่าน</label>
+                        <?php if ($forgotUrl = config('auth.forgot_password_url')): ?>
+                            <a href="<?= e($forgotUrl) ?>" target="_blank" rel="noopener" class="small" title="เปลี่ยนรหัสผ่านที่ระบบ e-Passport ของมหาวิทยาลัย (บัญชีเจ้าหน้าที่ในระบบนี้ ติดต่อผู้ดูแลระบบ)">ลืมรหัสผ่าน?</a>
+                        <?php endif; ?>
+                    </div>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                        <input type="password" name="password" class="form-control" required>
+                        <input type="password" name="password" id="password" class="form-control" required>
+                        <button type="button" class="btn btn-outline-secondary" data-toggle-password="#password" title="แสดงรหัสผ่าน" aria-label="แสดงรหัสผ่าน">
+                            <i class="bi bi-eye"></i>
+                        </button>
                     </div>
                 </div>
                 <button class="btn btn-primary w-100 py-2"><i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ระบบ</button>
