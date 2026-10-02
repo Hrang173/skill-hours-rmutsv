@@ -48,8 +48,8 @@ return [
         )),
         // รับเฉพาะนักศึกษาคณะเหล่านี้ (faccode คั่นด้วย ,) — ว่าง = รับทุกคณะ
         'allowed_faccodes' => array_filter(array_map('trim', explode(',', env('UNI_API_ALLOW_FACCODES', '')))),
-        // ช่องที่ใช้เป็น "สาขาวิชา" ของนักศึกษาใหม่: depname หรือ secname
-        'major_field' => env('UNI_API_MAJOR_FIELD', 'depname'),
+        // ช่องที่ใช้เป็น "สาขาวิชา" ของนักศึกษา (RMUTSV ส่งสาขามาใน secname, depname เป็น "-")
+        'major_field' => env('UNI_API_MAJOR_FIELD', 'secname'),
         // แปลงค่าประเภทนักศึกษา (ใช้กับ API รับข้อมูลเข้า /api/v1/students/sync)
         'program_type_map' => [
             '4year'    => '4year',

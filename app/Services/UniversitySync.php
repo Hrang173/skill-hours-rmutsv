@@ -64,12 +64,13 @@ final class UniversitySync
 
     /**
      * หาบัญชีในระบบที่ตรงกับ profile จาก API มหาวิทยาลัย
-     * ลำดับ: ชื่อผู้ใช้ → ชื่อผู้ใช้มหาวิทยาลัยที่เคยผูกไว้ (external_id) → อีเมล
+     * ลำดับ: ชื่อผู้ใช้ → ชื่อผู้ใช้มหาวิทยาลัยที่เคยผูกไว้ (external_id) → รหัสนักศึกษา → อีเมล
      */
     public static function findLocalUser(array $p): ?array
     {
         return q_one('SELECT * FROM users WHERE username = ?', [$p['username']])
             ?? q_one('SELECT * FROM users WHERE external_id = ?', [$p['username']])
+            ?? (!empty($p['student_code']) ? q_one('SELECT u.* FROM users u JOIN students s ON s.user_id = u.id WHERE s.student_code = ?', [$p['student_code']]) : null)
             ?? (!empty($p['email']) ? q_one('SELECT * FROM users WHERE email = ? ORDER BY id LIMIT 1', [$p['email']]) : null);
     }
 
@@ -99,8 +100,14 @@ final class UniversitySync
                 [$p['prefix'] ?: $user['prefix'], $p['first_name'] ?: $user['first_name'], $p['last_name'] ?: $user['last_name'], $p['email'], $p['username'], $user['id']]
             );
             if ($isStudent) {
-                // ไม่ทับสาขา/แผนการเรียนที่ฝ่ายทะเบียนตั้งไว้ อัปเดตเฉพาะคณะและเวลาซิงก์
-                q('UPDATE students SET faculty = COALESCE(?, faculty), synced_at = NOW() WHERE user_id = ?', [$p['faculty'], $user['id']]);
+                // ไม่ทับสาขา/แผนการเรียนที่ฝ่ายทะเบียนตั้งไว้ (เติมสาขาให้เฉพาะตอนที่ยังว่าง)
+                q(
+                    "UPDATE students SET faculty = COALESCE(?, faculty),
+                            major = CASE WHEN major IN ('', '-') THEN COALESCE(?, major) ELSE major END,
+                            synced_at = NOW()
+                      WHERE user_id = ?",
+                    [$p['faculty'], $p['major'], $user['id']]
+                );
             }
             return [q_one('SELECT * FROM users WHERE id = ?', [$user['id']]), null];
         }

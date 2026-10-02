@@ -97,7 +97,8 @@ final class RmutsvApiClient implements UniversityApiInterface
     /** แปลงคำตอบของ RMUTSV → profile กลางของระบบ (ดู UniversityApiInterface) */
     private function mapElogin(array $b): array
     {
-        $str = fn(string $k) => trim((string) ($b[$k] ?? ''));
+        // API ใช้ "-" แทนค่าว่าง
+        $str = fn(string $k) => ($v = trim((string) ($b[$k] ?? ''))) === '-' ? '' : $v;
         $username = $str('username');
         $first = $str('firstname');
         $last = $str('lastname');
@@ -113,13 +114,15 @@ final class RmutsvApiClient implements UniversityApiInterface
         }
 
         $type = mb_strtolower($str('type'));
-        $isStudent = in_array($type, $this->cfg['student_types'], true) || preg_match('/^\d{10,13}$/', $username) === 1;
-        $major = $str($this->cfg['major_field'] ?? 'depname') ?: $str('depname');
+        $isStudent = in_array($type, $this->cfg['student_types'], true) || preg_match('/^s?\d{10,13}$/i', $username) === 1;
+        // ชื่อผู้ใช้นักศึกษาของ RMUTSV = "s" + รหัสนักศึกษา เช่น s666415850004 → 666415850004
+        $studentCode = preg_match('/^s?(\d{10,13})$/i', $username, $m) ? $m[1] : $username;
+        $major = $str($this->cfg['major_field'] ?? 'secname') ?: $str('secname') ?: $str('depname');
 
         return [
             'role'         => $isStudent ? 'student' : 'teacher',
             'username'     => $username,
-            'student_code' => $isStudent ? $username : null,
+            'student_code' => $isStudent ? $studentCode : null,
             'prefix'       => $prefix,
             'first_name'   => $first,
             'last_name'    => $last,
