@@ -22,6 +22,11 @@ final class MockUniversityApi implements UniversityApiInterface
         return 'ข้อมูลจำลอง (mock)';
     }
 
+    public function supportsLookup(): bool
+    {
+        return true;
+    }
+
     public function ping(): array
     {
         return ['ok' => true, 'message' => 'Mock API พร้อมใช้งาน (ข้อมูลจำลอง ' . count(self::DEMO) . ' คน)'];

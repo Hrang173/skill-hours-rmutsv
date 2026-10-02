@@ -6,22 +6,24 @@ namespace App\Integrations\UniversityApi;
 use RuntimeException;
 
 /**
- * ตัวเชื่อมต่อ REST API ของมหาวิทยาลัยเทคโนโลยีราชมงคลศรีวิชัย (RMUTSV)
+ * ตัวเชื่อมต่อ API ของมหาวิทยาลัยเทคโนโลยีราชมงคลศรีวิชัย (RMUTSV)
  *
- * ** ยังไม่มีเอกสาร API จริง ** จึงออกแบบให้ปรับได้จาก config โดยไม่ต้องแก้โค้ด:
- *   - UNI_API_BASE_URL          URL หลัก
- *   - UNI_API_KEY               ส่งไปใน header "Authorization: Bearer <key>" และ "X-API-Key"
- *   - UNI_API_*_ENDPOINT        path ของแต่ละ endpoint ({code} จะถูกแทนด้วยรหัส)
- *   - config.php → field_map    จับคู่ชื่อฟิลด์ JSON ของมหาวิทยาลัย → ฟิลด์ในระบบเรา
+ * เข้าสู่ระบบ:  POST {base}/elogin   body JSON {"username": "...", "password": "..."}
+ * ตอบกลับ:     {"status": "ok", "username", "name", "firstname", "lastname", "type",
+ *               "faccode", "facname", "depcode", "depname", "seccode", "secname",
+ *               "campuscode", "campusname", "email", "cid", "token", ...}
+ * status อื่น:  "password" (รหัสผิด), "weakpassword" (รหัสไม่ผ่านนโยบาย), "json" (ส่งคำขอผิดรูปแบบ)
  *
- * รูปแบบที่คาดไว้ (ปรับได้):
- *   POST {base}/auth/login          body: {"username": "...", "password": "..."}  → 200 + JSON โปรไฟล์
- *   GET  {base}/students/{code}                                                   → 200 + JSON นักศึกษา
- *   GET  {base}/staff/{code}                                                      → 200 + JSON บุคลากร
- * JSON ที่ตอบกลับอาจห่อด้วย {"data": {...}} ก็ได้ ระบบจะแกะให้อัตโนมัติ
+ * ** ไม่เก็บ cid (เลขประจำตัวประชาชน) และ token ** — ตัดทิ้งทันทีหลังได้คำตอบ
  */
 final class RmutsvApiClient implements UniversityApiInterface
 {
+    /** ฟิลด์อ่อนไหวที่ห้ามเก็บ/แสดง */
+    public const SENSITIVE_FIELDS = ['cid', 'token'];
+
+    /** คำตอบล่าสุดจาก /elogin (ตัดฟิลด์อ่อนไหวแล้ว) — ใช้ในหน้าทดสอบของ admin */
+    private ?array $lastResponse = null;
+
     public function __construct(private readonly array $cfg)
     {
     }
@@ -31,14 +33,21 @@ final class RmutsvApiClient implements UniversityApiInterface
         return 'RMUTSV API (' . ($this->cfg['base_url'] ?: 'ยังไม่ตั้งค่า URL') . ')';
     }
 
+    public function supportsLookup(): bool
+    {
+        return $this->cfg['endpoints']['student'] !== '';
+    }
+
     public function ping(): array
     {
         if (!$this->cfg['base_url']) {
             return ['ok' => false, 'message' => 'ยังไม่ได้ตั้งค่า UNI_API_BASE_URL'];
         }
         try {
-            [$status] = $this->request('GET', '/');
-            return ['ok' => $status < 500, 'message' => 'เชื่อมต่อได้ (HTTP ' . $status . ')'];
+            // ส่งคำขอว่างไปที่ /elogin — ถ้า API ทำงานจะตอบ JSON กลับมา (status = "password")
+            [$status, $body] = $this->request('POST', $this->cfg['endpoints']['auth'], ['username' => '', 'password' => '']);
+            $ok = $status === 200 && is_array($body) && isset($body['status']);
+            return ['ok' => $ok, 'message' => $ok ? 'เชื่อมต่อ API ได้ (HTTP 200)' : 'API ตอบกลับผิดรูปแบบ (HTTP ' . $status . ')'];
         } catch (RuntimeException $e) {
             return ['ok' => false, 'message' => $e->getMessage()];
         }
@@ -51,85 +60,78 @@ final class RmutsvApiClient implements UniversityApiInterface
             'password' => $password,
         ]);
         if ($status !== 200 || !is_array($body)) {
+            throw new RuntimeException('API มหาวิทยาลัยตอบกลับผิดปกติ (HTTP ' . $status . ')');
+        }
+        $this->lastResponse = array_diff_key($body, array_flip(self::SENSITIVE_FIELDS));
+        if (($body['status'] ?? '') !== 'ok' || trim((string) ($body['username'] ?? '')) === '') {
             return null;
         }
-        $data = $body['data'] ?? $body;
-        // ถ้ามีรหัสนักศึกษา → นักศึกษา, ไม่มีก็เป็นบุคลากร
-        $asStudent = $this->mapStudent($data);
-        if ($asStudent['student_code']) {
-            return $asStudent;
-        }
-        return $this->mapStaff($data);
+        return $this->mapElogin($body);
+    }
+
+    public function lastResponse(): ?array
+    {
+        return $this->lastResponse;
     }
 
     public function getStudent(string $studentCode): ?array
     {
-        [$status, $body] = $this->request('GET', str_replace('{code}', rawurlencode($studentCode), $this->cfg['endpoints']['student']));
-        if ($status !== 200 || !is_array($body)) {
+        if (!$this->supportsLookup()) {
             return null;
         }
-        return $this->mapStudent($body['data'] ?? $body);
+        [$status, $body] = $this->request('GET', str_replace('{code}', rawurlencode($studentCode), $this->cfg['endpoints']['student']));
+        return $status === 200 && is_array($body) && ($body['status'] ?? 'ok') === 'ok' ? $this->mapElogin($body) : null;
     }
 
     public function getStaff(string $username): ?array
     {
-        [$status, $body] = $this->request('GET', str_replace('{code}', rawurlencode($username), $this->cfg['endpoints']['staff']));
-        if ($status !== 200 || !is_array($body)) {
+        if ($this->cfg['endpoints']['staff'] === '') {
             return null;
         }
-        return $this->mapStaff($body['data'] ?? $body);
+        [$status, $body] = $this->request('GET', str_replace('{code}', rawurlencode($username), $this->cfg['endpoints']['staff']));
+        return $status === 200 && is_array($body) && ($body['status'] ?? 'ok') === 'ok' ? $this->mapElogin($body) : null;
     }
 
     /* ------------------------------------------------------------ internal */
 
-    private function mapStudent(array $data): array
+    /** แปลงคำตอบของ RMUTSV → profile กลางของระบบ (ดู UniversityApiInterface) */
+    private function mapElogin(array $b): array
     {
-        $map = $this->cfg['field_map']['student'];
-        $get = fn(string $k) => self::dig($data, $map[$k] ?? $k);
-        $code = (string) ($get('student_code') ?? '');
-        $rawType = (string) ($get('program_type') ?? '');
-        return [
-            'role'         => 'student',
-            'username'     => $code,
-            'student_code' => $code ?: null,
-            'prefix'       => (string) ($get('prefix') ?? ''),
-            'first_name'   => (string) ($get('first_name') ?? ''),
-            'last_name'    => (string) ($get('last_name') ?? ''),
-            'faculty'      => $get('faculty'),
-            'major'        => $get('major'),
-            'program_type' => $this->cfg['program_type_map'][$rawType] ?? null,
-            'entry_year'   => $get('entry_year') ? (int) $get('entry_year') : null,
-            'email'        => $get('email'),
-            'external_id'  => $code ?: null,
-        ];
-    }
+        $str = fn(string $k) => trim((string) ($b[$k] ?? ''));
+        $username = $str('username');
+        $first = $str('firstname');
+        $last = $str('lastname');
+        $name = $str('name');
 
-    private function mapStaff(array $data): array
-    {
-        $map = $this->cfg['field_map']['staff'];
-        $get = fn(string $k) => self::dig($data, $map[$k] ?? $k);
-        return [
-            'role'         => 'teacher',
-            'username'     => (string) ($get('username') ?? ''),
-            'student_code' => null,
-            'prefix'       => (string) ($get('prefix') ?? ''),
-            'first_name'   => (string) ($get('first_name') ?? ''),
-            'last_name'    => (string) ($get('last_name') ?? ''),
-            'email'        => $get('email'),
-            'external_id'  => (string) ($get('username') ?? ''),
-        ];
-    }
-
-    /** อ่านค่าจาก array ด้วย path แบบ a.b.c */
-    private static function dig(array $data, string $path): mixed
-    {
-        foreach (explode('.', $path) as $k) {
-            if (!is_array($data) || !array_key_exists($k, $data)) {
-                return null;
-            }
-            $data = $data[$k];
+        // คำนำหน้า = ส่วนของ name ที่อยู่หน้าชื่อจริง เช่น "นายสมชาย ใจดี" → "นาย"
+        $prefix = '';
+        if ($first !== '' && ($pos = mb_strpos($name, $first)) !== false) {
+            $prefix = trim(mb_substr($name, 0, $pos));
         }
-        return $data;
+        if ($first === '' && $name !== '') {
+            [$first, $last] = array_pad(preg_split('/\s+/u', $name, 2), 2, '');
+        }
+
+        $type = mb_strtolower($str('type'));
+        $isStudent = in_array($type, $this->cfg['student_types'], true) || preg_match('/^\d{10,13}$/', $username) === 1;
+        $major = $str($this->cfg['major_field'] ?? 'depname') ?: $str('depname');
+
+        return [
+            'role'         => $isStudent ? 'student' : 'teacher',
+            'username'     => $username,
+            'student_code' => $isStudent ? $username : null,
+            'prefix'       => $prefix,
+            'first_name'   => $first,
+            'last_name'    => $last,
+            'faculty'      => $str('facname') ?: null,
+            'faculty_code' => $str('faccode') ?: null,
+            'major'        => $major ?: null,
+            'program_type' => null,   // API ไม่บอกว่าเป็น 4 ปี หรือเทียบโอน — ฝ่ายทะเบียนกำหนดเอง
+            'entry_year'   => null,
+            'email'        => $str('email') ?: null,
+            'external_id'  => $username,
+            'raw_type'     => $str('type'),
+        ];
     }
 
     /**

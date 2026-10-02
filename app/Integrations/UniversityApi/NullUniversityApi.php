@@ -11,6 +11,11 @@ final class NullUniversityApi implements UniversityApiInterface
         return 'ปิดการเชื่อมต่อ (none)';
     }
 
+    public function supportsLookup(): bool
+    {
+        return false;
+    }
+
     public function ping(): array
     {
         return ['ok' => false, 'message' => 'ยังไม่ได้เปิดใช้งาน API มหาวิทยาลัย (ตั้งค่า UNI_API_DRIVER)'];

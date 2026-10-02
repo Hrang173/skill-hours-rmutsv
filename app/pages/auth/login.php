@@ -67,6 +67,9 @@ layout_start('เข้าสู่ระบบ');
                     </div>
                 </div>
                 <button class="btn btn-primary w-100 py-2"><i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ระบบ</button>
+                <?php if (config('auth.mode') === 'hybrid' && config('university_api.driver') !== 'none'): ?>
+                    <div class="form-text text-center mt-2"><i class="bi bi-shield-check me-1"></i>ใช้ชื่อผู้ใช้และรหัสผ่าน RMUTSV (บัญชีเดียวกับระบบของมหาวิทยาลัย) ได้</div>
+                <?php endif; ?>
             </form>
 
             <?php if (config('app.debug')): ?>

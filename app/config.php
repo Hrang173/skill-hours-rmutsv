@@ -25,41 +25,32 @@ return [
 
     // ---------------------------------------------------------------
     // การเชื่อมต่อ API มหาวิทยาลัยเทคโนโลยีราชมงคลศรีวิชัย
-    // เมื่อได้เอกสาร API จริง ให้แก้ endpoints และ field_map ให้ตรง
+    // POST https://api.rmutsv.ac.th/elogin  body JSON {"username","password"}
+    //   → {"status":"ok", "username", "name", "firstname", "lastname", "type", "facname", "depname", ...}
+    //   status อื่น: "password" = รหัสผิด, "weakpassword" = รหัสไม่ผ่านนโยบาย, "json" = รูปแบบคำขอผิด
     // ---------------------------------------------------------------
     'university_api' => [
         'driver'     => env('UNI_API_DRIVER', 'none'), // none | mock | rmutsv
-        'base_url'   => rtrim(env('UNI_API_BASE_URL', ''), '/'),
+        'base_url'   => rtrim(env('UNI_API_BASE_URL', 'https://api.rmutsv.ac.th'), '/'),
         'api_key'    => env('UNI_API_KEY', ''),
         'timeout'    => (int) env('UNI_API_TIMEOUT', '10'),
         'verify_ssl' => env('UNI_API_VERIFY_SSL', 'true') === 'true',
         'endpoints'  => [
-            'auth'    => env('UNI_API_AUTH_ENDPOINT', '/auth/login'),
-            'student' => env('UNI_API_STUDENT_ENDPOINT', '/students/{code}'),
-            'staff'   => env('UNI_API_STAFF_ENDPOINT', '/staff/{code}'),
+            'auth'    => env('UNI_API_AUTH_ENDPOINT', '/elogin'),
+            // มหาวิทยาลัยยังไม่มี API ค้นหาข้อมูลนักศึกษา/บุคลากร — ว่างไว้ = ไม่ใช้ ({code} = รหัส)
+            'student' => env('UNI_API_STUDENT_ENDPOINT', ''),
+            'staff'   => env('UNI_API_STAFF_ENDPOINT', ''),
         ],
-        // key ซ้าย = ฟิลด์ในระบบเรา, ค่าขวา = ฟิลด์ใน JSON ของ API มหาวิทยาลัย (ใช้ . สำหรับ nested เช่น data.std_code)
-        'field_map' => [
-            'student' => [
-                'student_code' => 'student_code',
-                'prefix'       => 'prefix',
-                'first_name'   => 'first_name',
-                'last_name'    => 'last_name',
-                'faculty'      => 'faculty',
-                'major'        => 'major',
-                'program_type' => 'program_type', // ค่าที่ API ส่งมาจะถูกแปลงด้วย program_type_map
-                'entry_year'   => 'entry_year',
-                'email'        => 'email',
-            ],
-            'staff' => [
-                'username'   => 'username',
-                'prefix'     => 'prefix',
-                'first_name' => 'first_name',
-                'last_name'  => 'last_name',
-                'email'      => 'email',
-            ],
-        ],
-        // แปลงค่าประเภทนักศึกษาจาก API → ค่าในระบบ
+        // ค่า "type" จาก /elogin ที่ถือว่าเป็นนักศึกษา (คั่นด้วย ,) — ชื่อผู้ใช้ที่เป็นตัวเลขล้วน 10-13 หลักก็ถือเป็นนักศึกษาเช่นกัน
+        'student_types' => array_filter(array_map(
+            fn($t) => mb_strtolower(trim($t)),
+            explode(',', env('UNI_API_STUDENT_TYPES', 'student,students,std,นักศึกษา'))
+        )),
+        // รับเฉพาะนักศึกษาคณะเหล่านี้ (faccode คั่นด้วย ,) — ว่าง = รับทุกคณะ
+        'allowed_faccodes' => array_filter(array_map('trim', explode(',', env('UNI_API_ALLOW_FACCODES', '')))),
+        // ช่องที่ใช้เป็น "สาขาวิชา" ของนักศึกษาใหม่: depname หรือ secname
+        'major_field' => env('UNI_API_MAJOR_FIELD', 'depname'),
+        // แปลงค่าประเภทนักศึกษา (ใช้กับ API รับข้อมูลเข้า /api/v1/students/sync)
         'program_type_map' => [
             '4year'    => '4year',
             '4'        => '4year',

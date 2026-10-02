@@ -71,7 +71,7 @@ page_header(full_name($st), 'รหัสนักศึกษา ' . $st['stude
                     <dt class="col-5">โทรศัพท์</dt><dd class="col-7"><?= e($st['phone'] ?: '-') ?></dd>
                     <?php if ($st['synced_at']): ?><dt class="col-5">ซิงก์ล่าสุด</dt><dd class="col-7"><?= thai_date($st['synced_at'], true) ?></dd><?php endif; ?>
                 </dl>
-                <?php if ($me['role'] === 'admin' && UniversityApiFactory::enabled()): ?>
+                <?php if ($me['role'] === 'admin' && UniversityApiFactory::make()->supportsLookup()): ?>
                     <form method="post" class="mt-2">
                         <?= csrf_field() ?>
                         <button name="action" value="sync" class="btn btn-sm btn-outline-secondary"><i class="bi bi-cloud-arrow-down me-1"></i>ซิงก์จาก API มหาวิทยาลัย</button>

@@ -21,13 +21,16 @@ services:
       DB_PASS: ${DB_PASS:-skillhours_pass}
       AUTH_MODE: ${AUTH_MODE:-local}
       UNI_API_DRIVER: ${UNI_API_DRIVER:-mock}
-      UNI_API_BASE_URL: ${UNI_API_BASE_URL:-}
+      UNI_API_BASE_URL: ${UNI_API_BASE_URL:-https://api.rmutsv.ac.th}
       UNI_API_KEY: ${UNI_API_KEY:-}
       UNI_API_TIMEOUT: ${UNI_API_TIMEOUT:-10}
       UNI_API_VERIFY_SSL: ${UNI_API_VERIFY_SSL:-true}
-      UNI_API_AUTH_ENDPOINT: ${UNI_API_AUTH_ENDPOINT:-/auth/login}
-      UNI_API_STUDENT_ENDPOINT: ${UNI_API_STUDENT_ENDPOINT:-/students/{code}}
-      UNI_API_STAFF_ENDPOINT: ${UNI_API_STAFF_ENDPOINT:-/staff/{code}}
+      UNI_API_AUTH_ENDPOINT: ${UNI_API_AUTH_ENDPOINT:-/elogin}
+      UNI_API_STUDENT_ENDPOINT: ${UNI_API_STUDENT_ENDPOINT:-}
+      UNI_API_STAFF_ENDPOINT: ${UNI_API_STAFF_ENDPOINT:-}
+      UNI_API_STUDENT_TYPES: ${UNI_API_STUDENT_TYPES:-student,students,std,นักศึกษา}
+      UNI_API_ALLOW_FACCODES: ${UNI_API_ALLOW_FACCODES:-}
+      UNI_API_MAJOR_FIELD: ${UNI_API_MAJOR_FIELD:-depname}
     depends_on:
       db:
         condition: service_healthy

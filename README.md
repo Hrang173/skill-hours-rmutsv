@@ -123,9 +123,10 @@ bash deploy/setup-server.sh
 |---|---|
 | `none` | ปิด |
 | `mock` | ข้อมูลจำลอง (ค่าเริ่มต้น ใช้ทดสอบ) |
-| `rmutsv` | เรียก REST API จริง — ตั้ง `UNI_API_BASE_URL`, `UNI_API_KEY`, `UNI_API_*_ENDPOINT` |
+| `rmutsv` | API จริงของมหาวิทยาลัย `POST https://api.rmutsv.ac.th/elogin` |
 
-- `AUTH_MODE=hybrid` → ถ้าไม่มีบัญชีในระบบ จะลองเข้าสู่ระบบผ่าน API มหาวิทยาลัย แล้วสร้างบัญชีให้อัตโนมัติ
+- `AUTH_MODE=hybrid` → เข้าสู่ระบบด้วยบัญชี RMUTSV ได้: **นักศึกษา** สร้างบัญชีอัตโนมัติครั้งแรก, **อาจารย์** ต้องมีบัญชีในระบบก่อน (ชื่อผู้ใช้หรืออีเมลตรงกับ RMUTSV)
+- ไม่เก็บรหัสผ่าน, `cid` และ `token` จาก API · ทดสอบได้ที่หน้า admin → API มหาวิทยาลัย
 - ชื่อฟิลด์ JSON ของมหาวิทยาลัยจับคู่ได้ใน `app/config.php` → `field_map` (ไม่ต้องแก้โค้ด)
 - ถ้ามหาวิทยาลัยใช้ LDAP/OAuth ให้สร้างคลาสใหม่ที่ implement `UniversityApiInterface`
 

@@ -118,13 +118,13 @@ function attempt_login(string $username, string $password): array
 
     if (config('auth.mode') === 'hybrid') {
         try {
-            $api = UniversityApiFactory::make();
-            $profile = $api->authenticate($username, $password);
+            $profile = UniversityApiFactory::make()->authenticate($username, $password);
             if ($profile) {
-                $user = UniversitySync::upsertFromProfile($profile);
+                [$user, $error] = UniversitySync::loginFromProfile($profile);
                 if ($user) {
-                    return [$user, null];
+                    audit('university.login', ['username' => $profile['username'], 'role' => $user['role']]);
                 }
+                return [$user, $error];
             }
         } catch (Throwable $ex) {
             error_log('University API login failed: ' . $ex->getMessage());

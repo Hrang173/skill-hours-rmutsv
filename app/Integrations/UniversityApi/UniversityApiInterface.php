@@ -30,6 +30,9 @@ interface UniversityApiInterface
     /** ชื่อ driver สำหรับแสดงผล */
     public function name(): string;
 
+    /** มี API ค้นหาข้อมูลนักศึกษาด้วยรหัสหรือไม่ (getStudent ใช้ได้) */
+    public function supportsLookup(): bool;
+
     /** ตรวจสอบว่าเชื่อมต่อได้ (คืน ['ok' => bool, 'message' => string]) */
     public function ping(): array;
 
