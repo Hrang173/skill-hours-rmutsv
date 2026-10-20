@@ -6,3 +6,4 @@ Thumbs.db
 .vscode/
 vendor/
 node_modules/
+.env.bak-*

@@ -74,6 +74,14 @@ bash deploy/setup-server.sh
 
 เสร็จแล้วเปิด `http://<IP ของเซิร์ฟเวอร์>:8080` จากเครื่องในวงแลนเดียวกัน · อัปเดตโค้ดครั้งต่อไป: `git pull && bash deploy/setup-server.sh`
 
+**เปิดเข้าสู่ระบบด้วยบัญชี RMUTSV + ปิดโหมดพัฒนา** (แก้ `.env` ให้อัตโนมัติ สำรองไฟล์เดิมไว้ แล้วเปิดระบบใหม่):
+
+```bash
+bash deploy/use-rmutsv-login.sh
+```
+
+(ใช้ API ของ e-Passport แทน: `bash deploy/use-rmutsv-login.sh epassport`)
+
 > **Proxmox Console วางข้อความไม่ได้?** แนะนำต่อ SSH จาก Windows แทน (เปิด PowerShell แล้วพิมพ์ `ssh project@<IP>`) — ในหน้าต่างนั้นคลิกขวาเพื่อวางคำสั่งได้ปกติ
 
 ---
