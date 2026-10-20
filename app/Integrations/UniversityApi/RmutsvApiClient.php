@@ -8,11 +8,20 @@ use RuntimeException;
 /**
  * ตัวเชื่อมต่อ API ของมหาวิทยาลัยเทคโนโลยีราชมงคลศรีวิชัย (RMUTSV)
  *
- * เข้าสู่ระบบ:  POST {base}/elogin   body JSON {"username": "...", "password": "..."}
- * ตอบกลับ:     {"status": "ok", "username", "name", "firstname", "lastname", "type",
- *               "faccode", "facname", "depcode", "depname", "seccode", "secname",
- *               "campuscode", "campusname", "email", "cid", "token", ...}
- * status อื่น:  "password" (รหัสผิด), "weakpassword" (รหัสไม่ผ่านนโยบาย), "json" (ส่งคำขอผิดรูปแบบ)
+ * รองรับ 2 รูปแบบ (ตั้งที่ UNI_API_FORMAT):
+ *
+ * 1) elogin (ค่าเริ่มต้น)
+ *    POST https://api.rmutsv.ac.th/elogin   body JSON {"username": "...", "password": "..."}
+ *    ตอบ: {"status": "ok", "username", "name", "firstname", "lastname", "type",
+ *          "faccode", "facname", "depcode", "depname", "seccode", "secname",
+ *          "campuscode", "campusname", "email", "cid", "token", ...}
+ *    status อื่น: "password" (รหัสผิด), "weakpassword" (รหัสไม่ผ่านนโยบาย), "json" (ส่งคำขอผิดรูปแบบ)
+ *
+ * 2) epassport (ระบบ e-Passport ตรวจทั้ง LDAP และ elogin)
+ *    POST https://epassport.rmutsv.ac.th/assets/api/logintest_user.php   body JSON {"userUid": "...", "userPass": "..."}
+ *    ตอบ: {"data": [{"action": "true", "mesg": "", "ldap": "true", "elogin": "true",
+ *                    "datadecode": { ...ข้อมูลเดียวกับแบบ elogin... }, "username": "..."}]}
+ *    ไม่ผ่าน: action = "false", datadecode = null, mesg = ข้อความแจ้ง
  *
  * ** ไม่เก็บ cid (เลขประจำตัวประชาชน) และ token ** — ตัดทิ้งทันทีหลังได้คำตอบ
  */
@@ -21,7 +30,7 @@ final class RmutsvApiClient implements UniversityApiInterface
     /** ฟิลด์อ่อนไหวที่ห้ามเก็บ/แสดง */
     public const SENSITIVE_FIELDS = ['cid', 'token'];
 
-    /** คำตอบล่าสุดจาก /elogin (ตัดฟิลด์อ่อนไหวแล้ว) — ใช้ในหน้าทดสอบของ admin */
+    /** คำตอบล่าสุดจาก API เข้าสู่ระบบ (ตัดฟิลด์อ่อนไหวแล้ว) — ใช้ในหน้าทดสอบของ admin */
     private ?array $lastResponse = null;
 
     public function __construct(private readonly array $cfg)
@@ -30,7 +39,7 @@ final class RmutsvApiClient implements UniversityApiInterface
 
     public function name(): string
     {
-        return 'RMUTSV API (' . ($this->cfg['base_url'] ?: 'ยังไม่ตั้งค่า URL') . ')';
+        return 'RMUTSV ' . $this->format() . ' (' . ($this->cfg['base_url'] ?: 'ยังไม่ตั้งค่า URL') . ')';
     }
 
     public function supportsLookup(): bool
@@ -44,10 +53,9 @@ final class RmutsvApiClient implements UniversityApiInterface
             return ['ok' => false, 'message' => 'ยังไม่ได้ตั้งค่า UNI_API_BASE_URL'];
         }
         try {
-            // ส่งคำขอว่างไปที่ /elogin — ถ้า API ทำงานจะตอบ JSON กลับมา (status = "password")
-            [$status, $body] = $this->request('POST', $this->cfg['endpoints']['auth'], ['username' => '', 'password' => '']);
-            $ok = $status === 200 && is_array($body) && isset($body['status']);
-            return ['ok' => $ok, 'message' => $ok ? 'เชื่อมต่อ API ได้ (HTTP 200)' : 'API ตอบกลับผิดรูปแบบ (HTTP ' . $status . ')'];
+            // ส่งชื่อผู้ใช้/รหัสผ่านว่าง — ถ้า API ทำงาน จะตอบ JSON ว่า "ไม่ผ่าน" กลับมาตามรูปแบบ
+            [$ok] = $this->loginRequest('', '');
+            return ['ok' => $ok !== null, 'message' => $ok !== null ? 'เชื่อมต่อ API ได้ (รูปแบบ ' . $this->format() . ')' : 'API ตอบกลับผิดรูปแบบ'];
         } catch (RuntimeException $e) {
             return ['ok' => false, 'message' => $e->getMessage()];
         }
@@ -55,18 +63,59 @@ final class RmutsvApiClient implements UniversityApiInterface
 
     public function authenticate(string $username, string $password): ?array
     {
-        [$status, $body] = $this->request('POST', $this->cfg['endpoints']['auth'], [
-            'username' => $username,
-            'password' => $password,
-        ]);
-        if ($status !== 200 || !is_array($body)) {
-            throw new RuntimeException('API มหาวิทยาลัยตอบกลับผิดปกติ (HTTP ' . $status . ')');
+        [$ok, $data] = $this->loginRequest($username, $password);
+        if ($ok === null) {
+            throw new RuntimeException('API มหาวิทยาลัยตอบกลับผิดรูปแบบ');
         }
-        $this->lastResponse = array_diff_key($body, array_flip(self::SENSITIVE_FIELDS));
-        if (($body['status'] ?? '') !== 'ok' || trim((string) ($body['username'] ?? '')) === '') {
+        if (!$ok || trim((string) ($data['username'] ?? '')) === '') {
             return null;
         }
-        return $this->mapElogin($body);
+        return $this->mapElogin($data);
+    }
+
+    private function format(): string
+    {
+        return ($this->cfg['format'] ?? 'elogin') === 'epassport' ? 'epassport' : 'elogin';
+    }
+
+    /**
+     * ส่งคำขอเข้าสู่ระบบตามรูปแบบที่ตั้งไว้
+     * @return array{0: ?bool, 1: ?array} [ผ่านหรือไม่ (null = คำตอบผิดรูปแบบ), ข้อมูลผู้ใช้แบบ elogin]
+     */
+    private function loginRequest(string $username, string $password): array
+    {
+        $epassport = $this->format() === 'epassport';
+        [$status, $body] = $this->request('POST', $this->cfg['endpoints']['auth'], $epassport
+            ? ['userUid' => $username, 'userPass' => $password]
+            : ['username' => $username, 'password' => $password]);
+        if ($status !== 200 || !is_array($body)) {
+            return [null, null];
+        }
+        $strip = fn(?array $a) => $a === null ? [] : array_diff_key($a, array_flip(self::SENSITIVE_FIELDS));
+
+        if (!$epassport) {
+            if (!isset($body['status'])) {
+                return [null, null];
+            }
+            $this->lastResponse = $strip($body);
+            return [$body['status'] === 'ok', $body];
+        }
+
+        $row = $body['data'][0] ?? null;
+        if (!is_array($row) || !array_key_exists('action', $row)) {
+            return [null, null];
+        }
+        $data = is_array($row['datadecode'] ?? null) ? $row['datadecode'] : null;
+        $passed = in_array($row['action'], ['true', true, 1, '1'], true); // ตอนนี้ส่งมาเป็นข้อความ "true"
+        // เก็บไว้แสดงในหน้าทดสอบ: ผลรวม + ข้อมูลผู้ใช้ (ตัด cid/token)
+        $this->lastResponse = [
+            'action' => $row['action'],
+            'ldap'   => $row['ldap'] ?? null,
+            'elogin' => $row['elogin'] ?? null,
+            'mesg'   => $row['mesg'] ?? null,
+        ] + $strip($data) + ['status' => $passed ? 'ok' : 'fail'];
+        $ok = $passed && $data !== null && ($data['status'] ?? '') === 'ok';
+        return [$ok, $data];
     }
 
     public function lastResponse(): ?array

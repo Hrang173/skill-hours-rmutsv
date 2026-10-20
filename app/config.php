@@ -33,6 +33,7 @@ return [
     // ---------------------------------------------------------------
     'university_api' => [
         'driver'     => env('UNI_API_DRIVER', 'none'), // none | mock | rmutsv
+        'format'     => env('UNI_API_FORMAT', 'elogin'), // elogin | epassport (ดู RmutsvApiClient)
         'base_url'   => rtrim(env('UNI_API_BASE_URL', 'https://api.rmutsv.ac.th'), '/'),
         'api_key'    => env('UNI_API_KEY', ''),
         'timeout'    => (int) env('UNI_API_TIMEOUT', '10'),

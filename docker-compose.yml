@@ -22,6 +22,7 @@ services:
       AUTH_MODE: ${AUTH_MODE:-local}
       FORGOT_PASSWORD_URL: ${FORGOT_PASSWORD_URL:-https://epassport.rmutsv.ac.th/forgot-pass#/forgot-pass-std}
       UNI_API_DRIVER: ${UNI_API_DRIVER:-mock}
+      UNI_API_FORMAT: ${UNI_API_FORMAT:-elogin}
       UNI_API_BASE_URL: ${UNI_API_BASE_URL:-https://api.rmutsv.ac.th}
       UNI_API_KEY: ${UNI_API_KEY:-}
       UNI_API_TIMEOUT: ${UNI_API_TIMEOUT:-10}

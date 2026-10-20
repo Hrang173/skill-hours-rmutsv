@@ -145,6 +145,12 @@ API จริง: `POST https://api.rmutsv.ac.th/elogin` body JSON `{"username",
   - migration 003 แก้บัญชีที่สร้างไปแล้ว (รหัสมี `s` และสาขาเป็น `-`)
 - ยังไม่ได้ลองด้วยบัญชีอาจารย์จริง (ไม่รู้ค่า `type` ของบุคลากร — ตอนนี้อะไรที่ไม่ใช่ `student` ถือเป็นบุคลากร)
 
+### รองรับ API ของ e-Passport (20 ต.ค. 2569)
+- `POST https://epassport.rmutsv.ac.th/assets/api/logintest_user.php` body JSON `{"userUid","userPass"}`
+- ตอบ `{"data":[{"action":"true","ldap","elogin","mesg","datadecode":{...ข้อมูลเดียวกับ /elogin...},"username"}]}` — ไม่ผ่าน: `action = "false"`, `datadecode = null`
+- เลือกรูปแบบด้วย `UNI_API_FORMAT=elogin|epassport` (+ `UNI_API_BASE_URL`, `UNI_API_AUTH_ENDPOINT`) ใช้ตัวแปลงข้อมูลชุดเดิม กติกาการสร้าง/จับคู่บัญชีเหมือนเดิม
+- ค่าเริ่มต้นในโค้ดยังเป็น `elogin` (ชื่อไฟล์ e-Passport มีคำว่า test) — `.env` ในเครื่องตั้งเป็น `epassport` ไว้ทดสอบ
+
 ## 3. ความปลอดภัยที่ทำไว้
 - รหัสผ่านเก็บด้วย `password_hash` (bcrypt)
 - ทุก query ใช้ prepared statement (กัน SQL injection)
