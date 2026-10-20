@@ -13,7 +13,7 @@ services:
     environment:
       APP_NAME: ${APP_NAME:-ระบบบันทึกชั่วโมงทักษะวิชาชีพ}
       APP_URL: ${APP_URL:-http://localhost:8080}
-      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_DEBUG: ${APP_DEBUG:-false}
       DB_HOST: db
       DB_PORT: 3306
       DB_NAME: ${DB_NAME:-skillhours}
