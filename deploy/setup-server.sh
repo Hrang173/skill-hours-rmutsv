@@ -61,11 +61,14 @@ else
     say "ใช้ไฟล์ .env เดิม"
 fi
 
+WEB_PORT="$(grep -E '^WEB_PORT=' .env | cut -d= -f2 || true)"; WEB_PORT="${WEB_PORT:-8080}"
+PMA_PORT="$(grep -E '^PMA_PORT=' .env | cut -d= -f2 || true)"; PMA_PORT="${PMA_PORT:-8081}"
+
 # ---------------------------------------------------------------- 3) firewall
 if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
-    say "เปิดพอร์ต 8080 (เว็บ) และ 8081 (phpMyAdmin) ใน ufw"
-    ufw allow 8080/tcp
-    ufw allow 8081/tcp
+    say "เปิดพอร์ต $WEB_PORT (เว็บ) และ $PMA_PORT (phpMyAdmin) ใน ufw"
+    ufw allow "$WEB_PORT/tcp"
+    ufw allow "$PMA_PORT/tcp"
 fi
 
 # ---------------------------------------------------------------- 4) run
@@ -74,22 +77,20 @@ docker compose up -d --build
 
 say "รอฐานข้อมูลพร้อม..."
 for _ in $(seq 1 60); do
-    if curl -fs -o /dev/null "http://localhost:8080/login"; then
+    if curl -fs -o /dev/null "http://localhost:$WEB_PORT/login"; then
         break
     fi
     sleep 2
 done
 docker compose ps
 
-WEB_PORT="$(grep -E '^WEB_PORT=' .env | cut -d= -f2)"
-PMA_PORT="$(grep -E '^PMA_PORT=' .env | cut -d= -f2)"
 cat <<EOF
 
 =====================================================================
   ติดตั้งเสร็จแล้ว เปิดจากเครื่องอื่นในวงแลนเดียวกันได้ที่:
 
-    เว็บระบบ     : http://$IP:${WEB_PORT:-8080}
-    phpMyAdmin  : http://$IP:${PMA_PORT:-8081}
+    เว็บระบบ     : http://$IP$([ "$WEB_PORT" = "80" ] || echo ":$WEB_PORT")
+    phpMyAdmin  : http://$IP:$PMA_PORT
 
   บัญชีทดลองทุกบัญชีรหัสผ่าน password123 (ควรเปลี่ยนก่อนใช้งานจริง)
   อัปเดตโค้ดครั้งต่อไป:  git pull && bash deploy/setup-server.sh
