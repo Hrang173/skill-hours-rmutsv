@@ -100,7 +100,11 @@ final class UniversitySync
                 [$p['prefix'] ?: $user['prefix'], $p['first_name'] ?: $user['first_name'], $p['last_name'] ?: $user['last_name'], $p['email'], $p['username'], $user['id']]
             );
             if ($isStudent) {
-                // ไม่ทับสาขา/แผนการเรียนที่ฝ่ายทะเบียนตั้งไว้ (เติมสาขาให้เฉพาะตอนที่ยังว่าง)
+                // แผนการเรียนจากรหัสนักศึกษา: อัปเดตเฉพาะบัญชีที่สร้างจาก API (บัญชีที่ฝ่ายทะเบียนสร้าง/นำเข้าเอง ไม่ทับ)
+                if (!empty($p['program_type']) && $user['auth_source'] === 'university') {
+                    q('UPDATE students SET program_type = ? WHERE user_id = ?', [$p['program_type'], $user['id']]);
+                }
+                // ไม่ทับสาขาที่ฝ่ายทะเบียนตั้งไว้ (เติมสาขาให้เฉพาะตอนที่ยังว่าง)
                 q(
                     "UPDATE students SET faculty = COALESCE(?, faculty),
                             major = CASE WHEN major IN ('', '-') THEN COALESCE(?, major) ELSE major END,

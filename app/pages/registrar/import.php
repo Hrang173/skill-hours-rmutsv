@@ -45,7 +45,11 @@ if (is_post()) {
             $report['errors'][] = "บรรทัด $line: ข้อมูลไม่ครบหรือรหัสนักศึกษาไม่ถูกต้อง ($code)";
             continue;
         }
-        $type = in_array(mb_strtolower($r['program_type'] ?? ''), ['transfer', 'เทียบโอน', 't'], true) ? 'transfer' : '4year';
+        // ช่อง program_type ว่าง → ดูจากรหัสนักศึกษา (หลักที่ 4: 4 = 4 ปี, 2 = เทียบโอน)
+        $given = mb_strtolower($r['program_type'] ?? '');
+        $type = $given !== ''
+            ? (in_array($given, ['transfer', 'เทียบโอน', 't'], true) ? 'transfer' : '4year')
+            : (program_type_from_code($code) ?? '4year');
         $year = (int) ($r['entry_year'] ?? 0) ?: null;
         $email = filter_var($r['email'] ?? '', FILTER_VALIDATE_EMAIL) ?: null;
         $major = ($r['major'] ?? '') ?: setting('default_major');
@@ -108,7 +112,7 @@ page_header('นำเข้ารายชื่อนักศึกษา (CS
                     <tr><td><code>student_code</code></td><td>รหัสนักศึกษา (จำเป็น)</td></tr>
                     <tr><td><code>prefix</code></td><td>คำนำหน้า เช่น นาย, นางสาว</td></tr>
                     <tr><td><code>first_name</code> / <code>last_name</code></td><td>ชื่อ / นามสกุล (จำเป็น)</td></tr>
-                    <tr><td><code>program_type</code></td><td><code>4year</code> หรือ <code>transfer</code> (เทียบโอน)</td></tr>
+                    <tr><td><code>program_type</code></td><td><code>4year</code> หรือ <code>transfer</code> (เทียบโอน) — เว้นว่างได้ ระบบดูจากรหัสนักศึกษา (หลักที่ 4: <code>4</code> = 4 ปี, <code>2</code> = เทียบโอน)</td></tr>
                     <tr><td><code>entry_year</code></td><td>ปีที่เข้า (พ.ศ.)</td></tr>
                     <tr><td><code>email</code>, <code>major</code></td><td>ไม่บังคับ</td></tr>
                 </table>

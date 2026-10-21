@@ -147,4 +147,12 @@ page_header(($id ? 'แก้ไข' : 'เพิ่ม') . role_label($role), $
         <button class="btn btn-primary"><i class="bi bi-save me-1"></i>บันทึก</button>
     </div>
 </form>
+<script>
+// พิมพ์รหัสนักศึกษาแล้วเลือกแผนการเรียนให้อัตโนมัติ (หลักที่ 4: 4 = 4 ปี, 2 = เทียบโอน) — ยังเปลี่ยนเองได้
+document.querySelector('[name=student_code]')?.addEventListener('input', e => {
+    const m = e.target.value.trim().match(/^s?\d{3}(\d)\d{6,9}$/i);
+    const type = m ? { 4: '4year', 2: 'transfer' }[m[1]] : null;
+    if (type) document.querySelector('[name=program_type]').value = type;
+});
+</script>
 <?php layout_end(); ?>

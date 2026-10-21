@@ -107,7 +107,10 @@ page_header('เชื่อมต่อ API มหาวิทยาลัย',
                     <div class="card-body small">
                         <dl class="row mb-0">
                             <dt class="col-sm-4">ระบบจะถือว่าเป็น</dt>
-                            <dd class="col-sm-8"><strong><?= $p['role'] === 'student' ? 'นักศึกษา' : 'อาจารย์/บุคลากร' ?></strong> <span class="text-muted">(type = "<?= e($p['raw_type']) ?>")</span></dd>
+                            <dd class="col-sm-8"><strong><?= $p['role'] === 'student' ? 'นักศึกษา' : 'อาจารย์/บุคลากร' ?></strong> <span class="text-muted">(type = "<?= e($p['raw_type']) ?>")</span>
+                                <?php if ($p['role'] === 'student'): ?>
+                                    <div>แผนการเรียน: <strong><?= $p['program_type'] ? program_label($p['program_type']) : 'ไม่ทราบ (ตั้งเป็น 4 ปี)' ?></strong> <span class="text-muted">(จากรหัส <?= e($p['student_code']) ?>)</span></div>
+                                <?php endif; ?></dd>
                             <dt class="col-sm-4">ชื่อ-สกุล</dt><dd class="col-sm-8"><?= e(full_name($p)) ?> <span class="text-muted">(คำนำหน้า: "<?= e($p['prefix']) ?>")</span></dd>
                             <dt class="col-sm-4">คณะ / สาขา</dt><dd class="col-sm-8"><?= e($p['faculty'] ?? '-') ?> / <?= e($p['major'] ?? '-') ?></dd>
                             <dt class="col-sm-4">บัญชีในระบบนี้</dt>

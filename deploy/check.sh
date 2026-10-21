@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# =====================================================================
+#  ตรวจสุขภาพระบบบนเซิร์ฟเวอร์ (อ่านอย่างเดียว ไม่แก้อะไร)
+#
+#    bash deploy/check.sh
+#
+#  - syntax PHP ทุกไฟล์ (ใน container จริง PHP 8.3)
+#  - สถานะ container และหน้าเว็บตอบหรือไม่
+#  - migration ที่รันแล้ว + จำนวนนักศึกษาแต่ละแผน
+#  - กติกาแยก 4 ปี / เทียบโอน จากรหัสนักศึกษา
+# =====================================================================
+set -uo pipefail
+cd "$(dirname "$0")/.."
+
+DOCKER="docker"
+docker info >/dev/null 2>&1 || DOCKER="sudo docker"
+
+echo "== PHP syntax"
+$DOCKER compose exec -T web sh -c 'find /var/www/html/app /var/www/html/public -name "*.php" -print0 | xargs -0 -n1 php -l' \
+    | grep -v "No syntax errors" || echo "   OK ทุกไฟล์"
+
+echo "== containers"
+$DOCKER compose ps --format '   {{.Service}}: {{.Status}}'
+
+PORT="$(grep -E '^WEB_PORT=' .env 2>/dev/null | cut -d= -f2 || true)"
+PORT="${PORT:-8080}"
+echo "== เว็บ (port $PORT)"
+curl -s -o /dev/null -w "   หน้าเข้าสู่ระบบ HTTP %{http_code}\n" "http://localhost:$PORT/login"
+
+echo "== migration + แผนการเรียน"
+$DOCKER compose exec -T db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" skillhours -e "
+    SELECT version FROM schema_migrations ORDER BY version;
+    SELECT program_type, COUNT(*) AS students FROM students GROUP BY program_type;"'
+
+echo "== กติการหัสนักศึกษา (หลักที่ 4: 4 = 4 ปี, 2 = เทียบโอน)"
+$DOCKER compose exec -T web php -r '
+    require "/var/www/html/app/lib/helpers.php";
+    foreach (["s666415850035" => "4year", "s666215850032" => "transfer", "TEST00000001" => null] as $code => $want) {
+        $got = program_type_from_code($code);
+        printf("   %-14s -> %-8s %s\n", $code, var_export($got, true), $got === $want ? "OK" : "ผิด!");
+    }'

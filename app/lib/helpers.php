@@ -250,6 +250,20 @@ function full_name(array $u, string $prefixKey = 'prefix'): string
     return trim(($u[$prefixKey] ?? '') . ($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? ''));
 }
 
+/**
+ * แผนการเรียนจากรหัสนักศึกษา มทร.ศรีวิชัย: ดูตัวเลขหลักที่ 4 (ตัวแรกหลังเลข 3 ตัวหน้า)
+ *   4 = แผน 4 ปี   เช่น s666 4 15850035
+ *   2 = เทียบโอน   เช่น s666 2 15850032
+ * รหัสรูปแบบอื่น / ตัวเลขอื่น → null (ไม่เดา)
+ */
+function program_type_from_code(?string $code): ?string
+{
+    if (!$code || !preg_match('/^s?\d{3}(\d)\d{6,9}$/i', trim($code), $m)) {
+        return null;
+    }
+    return ['4' => '4year', '2' => 'transfer'][$m[1]] ?? null;
+}
+
 function program_label(?string $type): string
 {
     return $type === 'transfer' ? 'เทียบโอน' : '4 ปี';
