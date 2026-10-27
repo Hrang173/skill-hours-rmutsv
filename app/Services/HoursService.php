@@ -84,9 +84,9 @@ final class HoursService
         $required = self::requiredHours($programType);
         $cap = self::teacherCap();
 
-        // แยกตามทักษะ (แสดงข้อมูล ไม่มีเพดาน)
+        // แยกตามทักษะ (แสดงข้อมูล ไม่มีเพดาน) — ทักษะของปีการศึกษาปัจจุบัน + ทักษะปีอื่นที่นักศึกษาเคยฝึก
         $skills = q_all(
-            "SELECT sk.id, sk.code, sk.name,
+            "SELECT sk.id, sk.code, sk.name, sk.academic_year,
                     CONCAT(o.prefix, o.first_name, ' ', o.last_name) AS owner_name,
                     COALESCE(SUM(CASE WHEN p.status = 'completed' AND p.result = 'pass' THEN p.hours_awarded END), 0) AS hours,
                     COUNT(CASE WHEN p.status = 'completed' AND p.result = 'pass' THEN 1 END) AS activity_count
@@ -94,10 +94,10 @@ final class HoursService
                LEFT JOIN users o ON o.id = sk.owner_id
                LEFT JOIN activities a ON a.skill_id = sk.id
                LEFT JOIN participations p ON p.activity_id = a.id AND p.student_id = ?
-              WHERE sk.is_active = 1 OR p.id IS NOT NULL
-              GROUP BY sk.id, sk.code, sk.name, owner_name
-              ORDER BY sk.sort_order, sk.id",
-            [$studentId]
+              WHERE (sk.is_active = 1 AND sk.academic_year = ?) OR p.id IS NOT NULL
+              GROUP BY sk.id, sk.code, sk.name, sk.academic_year, owner_name
+              ORDER BY sk.academic_year DESC, sk.sort_order, sk.id",
+            [$studentId, current_academic_year()]
         );
 
         // แยกตามอาจารย์ผู้ควบคุมกิจกรรม — ตัวนี้ใช้คิดชั่วโมงที่นับได้

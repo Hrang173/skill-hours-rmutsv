@@ -30,7 +30,9 @@ $bySkill = q_all(
        FROM skills sk
        LEFT JOIN activities a ON a.skill_id = sk.id
        LEFT JOIN participations p ON p.activity_id = a.id AND p.status = 'completed' AND p.result = 'pass'
-      GROUP BY sk.id, sk.name ORDER BY sk.sort_order"
+      WHERE sk.academic_year = ?
+      GROUP BY sk.id, sk.name ORDER BY sk.sort_order",
+    [current_academic_year()]
 );
 $maxSkill = max(1, ...array_map(fn($r) => (float) $r['hours'], $bySkill ?: [['hours' => 1]]));
 
@@ -85,7 +87,7 @@ page_header('ภาพรวมการฝึกทักษะวิชาช�
     </div>
     <div class="col-lg-6">
         <div class="card h-100">
-            <div class="card-header bg-white fw-semibold">ชั่วโมงที่ฝึกแล้วแยกตามทักษะ</div>
+            <div class="card-header bg-white fw-semibold">ชั่วโมงที่ฝึกแล้วแยกตามทักษะ · ปีการศึกษา <?= current_academic_year() ?></div>
             <div class="card-body">
                 <?php foreach ($bySkill as $s): ?>
                     <div class="mb-2">

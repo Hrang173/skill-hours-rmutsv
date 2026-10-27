@@ -23,7 +23,7 @@ if (is_post()) {
 
     if (!$studentIds) $errors[] = 'กรุณาเลือกนักศึกษาอย่างน้อย 1 คน';
     if ($data['title'] === '') $errors[] = 'กรุณากรอกชื่องาน/กิจกรรม';
-    if (!q_val('SELECT 1 FROM skills WHERE id = ?', [$data['skill_id']])) $errors[] = 'กรุณาเลือกทักษะ';
+    if ($err = skill_year_error($data['skill_id'], $data['semester_id'])) $errors[] = $err;
     if ($data['hours'] <= 0 || $data['hours'] > 200) $errors[] = 'จำนวนชั่วโมงต้องอยู่ระหว่าง 0.5 – 200';
 
     if (!$errors) {
@@ -55,7 +55,7 @@ if (is_post()) {
     $preselected = q_all('SELECT u.id, u.prefix, u.first_name, u.last_name, s.student_code FROM users u JOIN students s ON s.user_id = u.id WHERE u.id = ?', [$sid]);
 }
 
-$skills = q_all("SELECT sk.id, sk.name, sk.owner_id FROM skills sk WHERE sk.is_active = 1 ORDER BY sk.sort_order");
+$skills = skills_for_form();
 $semesters = all_semesters();
 $cur = current_semester();
 
@@ -87,19 +87,18 @@ page_header('มอบหมายกิจกรรมรายบุคคล'
                 </div>
                 <div class="col-md-8">
                     <label class="form-label">ทักษะ <span class="text-danger">*</span></label>
-                    <select name="skill_id" class="form-select" required>
+                    <select name="skill_id" class="form-select" required data-skill-select data-current-year="<?= current_academic_year() ?>" data-me="<?= $me['id'] ?>">
                         <option value="">-- เลือกทักษะ --</option>
-                        <?php foreach ($skills as $s):
-                            $sel = old('skill_id') ? (int) old('skill_id') === (int) $s['id'] : (int) $s['owner_id'] === (int) $me['id']; ?>
-                            <option value="<?= $s['id'] ?>" <?= $sel ? 'selected' : '' ?>><?= e($s['name']) ?></option>
+                        <?php foreach ($skills as $s): ?>
+                            <option value="<?= $s['id'] ?>" data-year="<?= $s['academic_year'] ?>" data-owner="<?= (int) $s['owner_id'] ?>" <?= (int) old('skill_id') === (int) $s['id'] ? 'selected' : '' ?>><?= e($s['name']) ?> (<?= e($s['owner_name'] ?? '-') ?>)</option>
                         <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">ภาคการศึกษา</label>
-                    <select name="semester_id" class="form-select">
+                    <select name="semester_id" class="form-select" data-semester-select>
                         <?php foreach ($semesters as $s): ?>
-                            <option value="<?= $s['id'] ?>" <?= (int) old('semester_id', $cur['id'] ?? 0) === (int) $s['id'] ? 'selected' : '' ?>><?= e(semester_label($s)) ?></option>
+                            <option value="<?= $s['id'] ?>" data-year="<?= $s['academic_year'] ?>" <?= (int) old('semester_id', $cur['id'] ?? 0) === (int) $s['id'] ? 'selected' : '' ?>><?= e(semester_label($s)) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>

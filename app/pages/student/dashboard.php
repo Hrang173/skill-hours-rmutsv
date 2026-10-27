@@ -80,7 +80,7 @@ page_header(
             <ul class="list-group list-group-flush">
                 <?php foreach ($sum['skills'] as $s): ?>
                     <li class="list-group-item d-flex justify-content-between align-items-start">
-                        <span><?= e($s['name']) ?><div class="small text-muted"><?= e($s['owner_name'] ?? '-') ?></div></span>
+                        <span><?= e($s['name']) ?><?= (int) $s['academic_year'] !== current_academic_year() ? ' <span class="badge text-bg-light border">ปี ' . $s['academic_year'] . '</span>' : '' ?><div class="small text-muted"><?= e($s['owner_name'] ?? '-') ?></div></span>
                         <strong class="text-nowrap ms-2"><?= fmt_hours($s['hours']) ?> ชม.</strong>
                     </li>
                 <?php endforeach; ?>

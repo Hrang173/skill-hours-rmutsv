@@ -108,7 +108,7 @@ page_header(full_name($st), 'รหัสนักศึกษา ' . $st['stude
             <div class="card-header bg-white fw-semibold">ชั่วโมงแยกตามทักษะ</div>
             <ul class="list-group list-group-flush small">
                 <?php foreach ($sum['skills'] as $s): ?>
-                    <li class="list-group-item d-flex justify-content-between"><span><?= e($s['name']) ?></span><strong class="text-nowrap ms-2"><?= fmt_hours($s['hours']) ?> ชม.</strong></li>
+                    <li class="list-group-item d-flex justify-content-between"><span><?= e($s['name']) ?><?= (int) $s['academic_year'] !== current_academic_year() ? ' <span class="badge text-bg-light border">ปี ' . $s['academic_year'] . '</span>' : '' ?></span><strong class="text-nowrap ms-2"><?= fmt_hours($s['hours']) ?> ชม.</strong></li>
                 <?php endforeach; ?>
             </ul>
         </div>

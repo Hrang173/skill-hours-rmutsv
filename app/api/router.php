@@ -76,9 +76,12 @@ if ($route === 'v1/health' || $route === 'v1' || $route === '') {
 api_auth();
 
 if ($method === 'GET' && $route === 'v1/skills') {
+    // ?year=2569 (พ.ศ.) — ค่าเริ่มต้น = ปีการศึกษาปัจจุบัน
+    $year = input_int('year') ?: current_academic_year();
     $rows = q_all("SELECT sk.code, sk.name, CONCAT(u.prefix, u.first_name, ' ', u.last_name) AS owner
-                     FROM skills sk LEFT JOIN users u ON u.id = sk.owner_id WHERE sk.is_active = 1 ORDER BY sk.sort_order");
-    json_response(['data' => array_map(fn($r) => ['code' => $r['code'], 'name' => $r['name'], 'owner' => $r['owner']], $rows)]);
+                     FROM skills sk LEFT JOIN users u ON u.id = sk.owner_id
+                    WHERE sk.is_active = 1 AND sk.academic_year = ? ORDER BY sk.sort_order", [$year]);
+    json_response(['academic_year' => $year, 'data' => array_map(fn($r) => ['code' => $r['code'], 'name' => $r['name'], 'owner' => $r['owner']], $rows)]);
 }
 
 if ($method === 'GET' && $route === 'v1/students') {

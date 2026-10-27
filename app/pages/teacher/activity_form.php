@@ -27,7 +27,7 @@ if (is_post()) {
     $sessions = ActivityService::sessionsFromRequest();
 
     if ($data['title'] === '') $errors[] = 'กรุณากรอกชื่อกิจกรรม';
-    if (!q_val('SELECT 1 FROM skills WHERE id = ?', [$data['skill_id']])) $errors[] = 'กรุณาเลือกทักษะ';
+    if ($err = skill_year_error($data['skill_id'], $data['semester_id'])) $errors[] = $err;
     if ($data['hours'] <= 0 || $data['hours'] > 200) $errors[] = 'จำนวนชั่วโมงต้องอยู่ระหว่าง 0.5 – 200';
     foreach ($sessions as $s) {
         if ($s['start_time'] && $s['end_time'] && $s['end_time'] <= $s['start_time']) {
@@ -59,11 +59,10 @@ if (is_post()) {
     $act = array_merge($act ?? [], $data);
 }
 
-$skills = q_all("SELECT sk.id, sk.name, CONCAT(u.prefix, u.first_name, ' ', u.last_name) AS owner_name, sk.owner_id
-                   FROM skills sk LEFT JOIN users u ON u.id = sk.owner_id WHERE sk.is_active = 1 ORDER BY sk.sort_order");
 $semesters = all_semesters();
 $cur = current_semester();
 $v = fn(string $k, $d = '') => $act[$k] ?? $d;
+$skills = skills_for_form((int) $v('skill_id', 0));
 
 layout_start($id ? 'แก้ไขกิจกรรม' : 'สร้างกิจกรรม');
 page_header($id ? 'แก้ไขกิจกรรม' : 'สร้างกิจกรรมใหม่', 'โพสต์กิจกรรมให้นักศึกษาขอเข้าร่วม หรือสร้างเป็นกิจกรรมมอบหมายเฉพาะคน');
@@ -89,10 +88,10 @@ page_header($id ? 'แก้ไขกิจกรรม' : 'สร้างก�
             </div>
             <div class="col-md-8">
                 <label class="form-label">ทักษะ <span class="text-danger">*</span></label>
-                <select name="skill_id" class="form-select" required>
+                <select name="skill_id" class="form-select" required data-skill-select data-current-year="<?= current_academic_year() ?>" data-me="<?= $me['id'] ?>">
                     <option value="">-- เลือกทักษะ --</option>
                     <?php foreach ($skills as $s): ?>
-                        <option value="<?= $s['id'] ?>" <?= (int) $v('skill_id', 0) === (int) $s['id'] || (!$v('skill_id') && (int) $s['owner_id'] === (int) $me['id']) ? 'selected' : '' ?>>
+                        <option value="<?= $s['id'] ?>" data-year="<?= $s['academic_year'] ?>" data-owner="<?= (int) $s['owner_id'] ?>" <?= (int) $v('skill_id', 0) === (int) $s['id'] ? 'selected' : '' ?>>
                             <?= e($s['name']) ?> (<?= e($s['owner_name'] ?? '-') ?>)
                         </option>
                     <?php endforeach; ?>
@@ -100,10 +99,10 @@ page_header($id ? 'แก้ไขกิจกรรม' : 'สร้างก�
             </div>
             <div class="col-md-4">
                 <label class="form-label">ภาคการศึกษา</label>
-                <select name="semester_id" class="form-select">
+                <select name="semester_id" class="form-select" data-semester-select>
                     <option value="">-</option>
                     <?php foreach ($semesters as $s): ?>
-                        <option value="<?= $s['id'] ?>" <?= (int) $v('semester_id', $cur['id'] ?? 0) === (int) $s['id'] ? 'selected' : '' ?>><?= e(semester_label($s)) ?><?= $s['is_current'] ? ' (ปัจจุบัน)' : '' ?></option>
+                        <option value="<?= $s['id'] ?>" data-year="<?= $s['academic_year'] ?>" <?= (int) $v('semester_id', $cur['id'] ?? 0) === (int) $s['id'] ? 'selected' : '' ?>><?= e(semester_label($s)) ?><?= $s['is_current'] ? ' (ปัจจุบัน)' : '' ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>

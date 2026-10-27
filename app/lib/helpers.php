@@ -340,6 +340,41 @@ function all_semesters(): array
     return q_all('SELECT * FROM semesters ORDER BY academic_year DESC, term DESC');
 }
 
+/** ปีการศึกษาปัจจุบัน (พ.ศ.): จากภาคการศึกษาปัจจุบัน → ปีล่าสุดที่มี → คำนวณจากวันที่ (ปีการศึกษาเริ่ม มิ.ย.) */
+function current_academic_year(): int
+{
+    static $year = null;
+    return $year ??= (int) (current_semester()['academic_year']
+        ?? q_val('SELECT MAX(academic_year) FROM semesters')
+        ?? ((int) date('Y') + 543 - ((int) date('n') < 6 ? 1 : 0)));
+}
+
+/**
+ * ทักษะที่เลือกได้ในฟอร์มกิจกรรม (ทุกปีที่มีภาคการศึกษา) — ฟอร์มกรองตามปีของภาคที่เลือกด้วย JS
+ * $keepId = ทักษะเดิมของกิจกรรมที่กำลังแก้ (แสดงแม้ถูกปิดใช้งานแล้ว)
+ */
+function skills_for_form(?int $keepId = null): array
+{
+    return q_all(
+        "SELECT sk.id, sk.name, sk.owner_id, sk.academic_year, CONCAT(u.prefix, u.first_name, ' ', u.last_name) AS owner_name
+           FROM skills sk LEFT JOIN users u ON u.id = sk.owner_id
+          WHERE sk.is_active = 1 OR sk.id = ?
+          ORDER BY sk.academic_year DESC, sk.sort_order, sk.id",
+        [$keepId ?? 0]
+    );
+}
+
+/** ทักษะต้องเป็นของปีการศึกษาเดียวกับภาคที่เลือก (ไม่เลือกภาค = ปีปัจจุบัน) */
+function skill_year_error(int $skillId, ?int $semesterId): ?string
+{
+    $skillYear = q_val('SELECT academic_year FROM skills WHERE id = ?', [$skillId]);
+    if ($skillYear === null) {
+        return 'กรุณาเลือกทักษะ';
+    }
+    $year = $semesterId ? q_val('SELECT academic_year FROM semesters WHERE id = ?', [$semesterId]) : current_academic_year();
+    return (int) $skillYear === (int) $year ? null : 'ทักษะที่เลือกไม่ใช่ของปีการศึกษา ' . $year . ' กรุณาเลือกทักษะใหม่';
+}
+
 /* ------------------------------------------------------------ แจ้งเตือน & log */
 
 function notify(int $userId, string $title, ?string $message = null, ?string $link = null): void

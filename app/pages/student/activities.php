@@ -85,7 +85,7 @@ $activities = q_all(
     array_merge([$me['id'], $me['id']], $params)
 );
 $sessions = ActivityService::sessionsFor(array_column($activities, 'id'));
-$skills = q_all('SELECT id, name FROM skills WHERE is_active = 1 ORDER BY sort_order');
+$skills = q_all('SELECT id, name FROM skills WHERE is_active = 1 AND academic_year = ? ORDER BY sort_order', [current_academic_year()]);
 
 layout_start('ขอเข้าร่วมกิจกรรม');
 page_header('กิจกรรมที่เปิดรับ', 'เลือกกิจกรรมที่อาจารย์โพสต์ไว้แล้วกดส่งคำขอเข้าร่วม');
