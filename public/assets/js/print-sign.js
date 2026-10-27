@@ -1,4 +1,4 @@
-/* ===== ลงชื่อท้ายแบบบันทึก (บรรทัด "ลงชื่อ") — เฉพาะหัวหน้าหลักสูตรของสาขานักศึกษา =====
+/* ===== ลงชื่อท้ายแบบบันทึก (บรรทัด "ลงชื่อ" และ "หัวหน้าหลักสูตร") — เฉพาะหัวหน้าหลักสูตรของสาขานักศึกษา =====
  * เลือกได้: เว้นว่าง / ลายเซ็น (ลายเซ็นที่บันทึกไว้ หรือเซ็นใหม่) / พิมพ์ชื่อ — ในวงเล็บแสดงชื่อหัวหน้าหลักสูตรเสมอ
  * ผลจะถูกวางลงทุกหน้าของเอกสาร และจำไว้ใน sessionStorage (เปลี่ยนภาค/ตัวเลือกแล้วไม่หาย)
  */
@@ -9,15 +9,17 @@
     const dialog = document.getElementById('signDialog');
     if (!cfg || !dialog) return;
 
-    const SLOTS = ['sign'];
+    const SLOTS = ['sign', 'pos'];
     const defaults = () => ({
         sign: { mode: 'none', value: '' },
+        pos: { mode: 'none', value: '' },
     });
 
     const load = () => {
         try {
             const raw = sessionStorage.getItem(cfg.storageKey);
-            return raw ? { sign: { ...defaults().sign, ...JSON.parse(raw).sign } } : defaults();
+            const saved = raw ? JSON.parse(raw) : {};
+            return Object.fromEntries(SLOTS.map(slot => [slot, { ...defaults()[slot], ...saved[slot] }]));
         } catch (e) {
             return defaults();
         }
@@ -71,8 +73,8 @@
                 pad.clear();
                 refresh();
             },
-            /** คืนค่าที่เลือก หรือ null ถ้ายังไม่ครบ */
-            read() {
+            /** คืนค่าที่เลือก หรือ null ถ้ายังไม่ครบ (prev = ค่าเดิม: ไม่ได้เซ็นใหม่ก็ใช้ลายเซ็นเดิม) */
+            read(prev) {
                 const m = mode();
                 if (m === 'name') {
                     const v = text.value.trim();
@@ -80,7 +82,8 @@
                     return { mode: 'name', value: v };
                 }
                 if (m === 'signature') {
-                    const v = src() === 'saved' ? cfg.savedSignature : pad.toDataURL();
+                    const v = src() === 'saved' ? cfg.savedSignature
+                        : pad.toDataURL() || (prev.mode === 'signature' ? prev.value : '');
                     if (!v) { alert('กรุณาเซ็นชื่อในกรอบ หรือเลือกใช้ลายเซ็นที่บันทึกไว้'); return null; }
                     return { mode: 'signature', value: v };
                 }
@@ -100,7 +103,7 @@
     dialog.querySelector('[data-apply]').addEventListener('click', () => {
         const next = {};
         for (const slot of SLOTS) {
-            const v = editors[slot].read();
+            const v = editors[slot].read(state[slot]);
             if (!v) return;
             next[slot] = v;
         }

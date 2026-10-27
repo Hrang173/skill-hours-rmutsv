@@ -5,7 +5,7 @@ use App\Services\HoursService;
  * พิมพ์ "แบบบันทึกการฝึกทักษะวิชาชีพ" (A4 แนวนอน) ตามแบบฟอร์มของคณะ
  * - นักศึกษา: พิมพ์ได้เฉพาะของตัวเอง
  * - อาจารย์ / ฝ่ายทะเบียน / admin: ?student_id=... หรือ ?code=รหัสนักศึกษา
- * - ช่อง "ลงชื่อ" ท้ายเอกสาร: เฉพาะหัวหน้าหลักสูตรของสาขานักศึกษา เลือกลงเป็นลายเซ็นหรือพิมพ์ชื่อได้
+ * - ช่อง "ลงชื่อ" และ "หัวหน้าหลักสูตร" ท้ายเอกสาร: เฉพาะหัวหน้าหลักสูตรของสาขานักศึกษา เลือกลงเป็นลายเซ็นหรือพิมพ์ชื่อได้
  *   ในวงเล็บ ( ) แสดงชื่อหัวหน้าหลักสูตรอัตโนมัติ
  *   (ทำฝั่งเบราว์เซอร์ก่อนสั่งพิมพ์ — ดู public/assets/js/print-sign.js)
  */
@@ -194,7 +194,7 @@ audit('print.form', ['student_id' => $sid, 'semester_id' => $semesterId]);
         <div class="head-sign">
             <div>ลงชื่อ <span class="fill w-sign slot" data-slot="sign"></span></div>
             <div class="paren">( <span class="fill w-headname"><?= e($headName) ?></span> )</div>
-            <div>หัวหน้าหลักสูตร<span class="fill w-headpos"><?= e($st['major']) ?></span></div>
+            <div>หัวหน้าหลักสูตร<span class="fill w-headpos slot" data-slot="pos"></span></div>
         </div>
     </div>
     <div class="meta">พิมพ์จาก<?= e(config('app.name')) ?> เมื่อ <?= thai_date(date('Y-m-d H:i:s'), true) ?> · หน้า <?= $pi + 1 ?>/<?= $pageCount ?></div>
@@ -206,30 +206,32 @@ audit('print.form', ['student_id' => $sid, 'semester_id' => $semesterId]);
     <form method="dialog">
         <h2><i class="bi bi-pen"></i> ลงชื่อหัวหน้าหลักสูตร</h2>
         <p class="hint">สาขา<?= e($st['major']) ?> · ในวงเล็บแสดงชื่อ <b><?= e($headName) ?></b> อัตโนมัติ</p>
-        <fieldset class="slot-editor" data-slot-editor="sign">
-            <legend>บรรทัด "ลงชื่อ ....."</legend>
-            <div class="seg">
-                <label><input type="radio" name="sign_mode" value="none"> เว้นว่าง</label>
-                <label><input type="radio" name="sign_mode" value="signature"> ลายเซ็น</label>
-                <label><input type="radio" name="sign_mode" value="name"> พิมพ์ชื่อ</label>
-            </div>
-            <div class="panel" data-panel="signature" hidden>
-                <?php if ($me['signature_data']): ?>
-                    <label class="opt"><input type="radio" name="sign_src" value="saved" checked> ใช้ลายเซ็นที่บันทึกไว้ของฉัน
-                        <img src="<?= e($me['signature_data']) ?>" alt="" class="saved-thumb"></label>
-                    <label class="opt"><input type="radio" name="sign_src" value="draw"> เซ็นใหม่</label>
-                <?php else: ?>
-                    <input type="radio" name="sign_src" value="draw" checked hidden>
-                <?php endif; ?>
-                <div class="pad-wrap" data-draw <?= $me['signature_data'] ? 'hidden' : '' ?>>
-                    <canvas data-pad width="520" height="160"></canvas>
-                    <button type="button" class="link" data-clear>ล้าง</button>
+        <?php foreach (['sign' => 'บรรทัด "ลงชื่อ ....."', 'pos' => 'บรรทัด "หัวหน้าหลักสูตร ....."'] as $slot => $label): ?>
+            <fieldset class="slot-editor" data-slot-editor="<?= $slot ?>">
+                <legend><?= $label ?></legend>
+                <div class="seg">
+                    <label><input type="radio" name="<?= $slot ?>_mode" value="none"> เว้นว่าง</label>
+                    <label><input type="radio" name="<?= $slot ?>_mode" value="signature"> ลายเซ็น</label>
+                    <label><input type="radio" name="<?= $slot ?>_mode" value="name"> พิมพ์ชื่อ</label>
                 </div>
-            </div>
-            <div class="panel" data-panel="name" hidden>
-                <input type="text" name="sign_text" maxlength="200" placeholder="พิมพ์ชื่อ-สกุล">
-            </div>
-        </fieldset>
+                <div class="panel" data-panel="signature" hidden>
+                    <?php if ($me['signature_data']): ?>
+                        <label class="opt"><input type="radio" name="<?= $slot ?>_src" value="saved" checked> ใช้ลายเซ็นที่บันทึกไว้ของฉัน
+                            <img src="<?= e($me['signature_data']) ?>" alt="" class="saved-thumb"></label>
+                        <label class="opt"><input type="radio" name="<?= $slot ?>_src" value="draw"> เซ็นใหม่</label>
+                    <?php else: ?>
+                        <input type="radio" name="<?= $slot ?>_src" value="draw" checked hidden>
+                    <?php endif; ?>
+                    <div class="pad-wrap" data-draw <?= $me['signature_data'] ? 'hidden' : '' ?>>
+                        <canvas data-pad width="520" height="160"></canvas>
+                        <button type="button" class="link" data-clear>ล้าง</button>
+                    </div>
+                </div>
+                <div class="panel" data-panel="name" hidden>
+                    <input type="text" name="<?= $slot ?>_text" maxlength="200" placeholder="พิมพ์ชื่อ-สกุล">
+                </div>
+            </fieldset>
+        <?php endforeach; ?>
         <menu>
             <button type="button" class="link" data-reset>คืนค่าเริ่มต้น</button>
             <span class="spacer"></span>
