@@ -39,3 +39,18 @@ $DOCKER compose exec -T web php -r '
         $got = program_type_from_code($code);
         printf("   %-14s -> %-8s %s\n", $code, var_export($got, true), $got === $want ? "OK" : "ผิด!");
     }'
+
+echo "== สร้างบัญชีอาจารย์อัตโนมัติ (ทดลองแล้วยกเลิก ไม่บันทึกจริง)"
+$DOCKER compose exec -T web php -r '
+    require "/var/www/html/app/bootstrap.php";
+    db()->beginTransaction();
+    $p = ["role" => "teacher", "username" => "zz.selftest", "prefix" => "อ.", "first_name" => "ทดสอบ", "last_name" => "ตรวจระบบ",
+          "email" => null, "external_id" => "zz.selftest", "raw_type" => "staff"];
+    [$u1, $err] = App\Services\UniversitySync::loginFromProfile($p);
+    [$u2] = App\Services\UniversitySync::loginFromProfile($p);
+    [$u3, $err3] = App\Services\UniversitySync::loginFromProfile(["raw_type" => "other", "username" => "zz.other"] + $p);
+    db()->rollBack();
+    echo "   ตั้งค่า auto_create_staff = ", setting("auto_create_staff", "1"), "\n";
+    echo "   staff เข้าครั้งแรก  -> ", $u1 ? "สร้าง {$u1["role"]} {$u1["prefix"]}{$u1["first_name"]} {$u1["last_name"]}  OK" : "ไม่สร้าง: $err", "\n";
+    echo "   เข้าครั้งที่สอง     -> ", $u1 && $u2 && $u1["id"] === $u2["id"] ? "บัญชีเดิม  OK" : "ผิด!", "\n";
+    echo "   type อื่น           -> ", $u3 ? "สร้าง  ผิด!" : "ไม่สร้าง  OK", "\n";'

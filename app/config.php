@@ -49,6 +49,11 @@ return [
             fn($t) => mb_strtolower(trim($t)),
             explode(',', env('UNI_API_STUDENT_TYPES', 'student,students,std,นักศึกษา'))
         )),
+        // ค่า "type" ที่ถือว่าเป็นบุคลากร → เข้าสู่ระบบครั้งแรกสร้างบัญชีอาจารย์ให้อัตโนมัติ (ปิดได้ในหน้าตั้งค่าระบบ)
+        'staff_types' => array_filter(array_map(
+            fn($t) => mb_strtolower(trim($t)),
+            explode(',', env('UNI_API_STAFF_TYPES', 'staff'))
+        )),
         // รับเฉพาะนักศึกษาคณะเหล่านี้ (faccode คั่นด้วย ,) — ว่าง = รับทุกคณะ
         'allowed_faccodes' => array_filter(array_map('trim', explode(',', env('UNI_API_ALLOW_FACCODES', '')))),
         // ช่องที่ใช้เป็น "สาขาวิชา" ของนักศึกษา (RMUTSV ส่งสาขามาใน secname, depname เป็น "-")

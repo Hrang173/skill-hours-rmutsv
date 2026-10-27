@@ -77,7 +77,7 @@ final class UniversitySync
     /**
      * เข้าสู่ระบบด้วย profile ที่ API มหาวิทยาลัยยืนยันแล้ว
      *  - นักศึกษา: ถ้ายังไม่มีบัญชี สร้างให้อัตโนมัติ (รหัสนักศึกษา = ชื่อผู้ใช้)
-     *  - บุคลากร/อาจารย์: ต้องมีบัญชีที่ฝ่ายทะเบียนสร้างไว้ก่อน (ไม่สร้างอัตโนมัติ เพื่อไม่ให้ใครก็ได้ได้สิทธิ์อาจารย์)
+     *  - บุคลากร/อาจารย์: ใช้บัญชีที่มีอยู่ ถ้ายังไม่มีและ type = staff สร้างบัญชีอาจารย์ให้ (ดู loginNewStaff)
      *
      * @return array{0: ?array, 1: ?string} [user, error]
      */
@@ -117,8 +117,7 @@ final class UniversitySync
         }
 
         if (!$isStudent) {
-            audit('university.login_staff_not_found', ['username' => $p['username'], 'type' => $p['raw_type'] ?? null]);
-            return [null, 'บัญชีบุคลากร "' . $p['username'] . '" ยังไม่มีในระบบนี้ กรุณาให้ฝ่ายทะเบียนเพิ่มบัญชีอาจารย์ด้วยชื่อผู้ใช้เดียวกับระบบมหาวิทยาลัยก่อน'];
+            return self::loginNewStaff($p);
         }
 
         $allowed = config('university_api.allowed_faccodes') ?: [];
@@ -129,6 +128,52 @@ final class UniversitySync
 
         $user = self::upsertFromProfile($p);
         return $user ? [$user, null] : [null, 'ข้อมูลจาก API มหาวิทยาลัยไม่ครบ ไม่สามารถสร้างบัญชีได้'];
+    }
+
+    /**
+     * บุคลากรที่ยังไม่มีบัญชีในระบบ (เข้าสู่ระบบครั้งแรก)
+     *  - type ตรงกับ UNI_API_STAFF_TYPES (ค่าเริ่มต้น staff) และเปิดตั้งค่า auto_create_staff → สร้างบัญชีอาจารย์ให้ ใช้ชื่อจาก API
+     *  - ถ้ามีบัญชีอาจารย์ที่สร้างไว้ก่อนด้วยชื่อผู้ใช้อื่น แต่ชื่อ-นามสกุลตรงกันคนเดียว → ผูกกับบัญชีเดิม (ไม่สร้างซ้ำ)
+     *
+     * @return array{0: ?array, 1: ?string} [user, error]
+     */
+    private static function loginNewStaff(array $p): array
+    {
+        $type = mb_strtolower((string) ($p['raw_type'] ?? ''));
+        if (setting('auto_create_staff', '1') !== '1' || !in_array($type, config('university_api.staff_types') ?: [], true)) {
+            audit('university.login_staff_not_found', ['username' => $p['username'], 'type' => $p['raw_type'] ?? null]);
+            return [null, 'บัญชีบุคลากร "' . $p['username'] . '" ยังไม่มีในระบบนี้ กรุณาให้ฝ่ายทะเบียนเพิ่มบัญชีอาจารย์ด้วยชื่อผู้ใช้เดียวกับระบบมหาวิทยาลัยก่อน'];
+        }
+        if (trim((string) $p['first_name']) === '' || trim((string) ($p['last_name'] ?? '')) === '') {
+            return [null, 'ข้อมูลจาก API มหาวิทยาลัยไม่มีชื่อ-นามสกุล ไม่สามารถสร้างบัญชีได้ กรุณาติดต่อฝ่ายทะเบียน'];
+        }
+
+        $same = q_all(
+            "SELECT * FROM users WHERE role = 'teacher' AND external_id IS NULL AND first_name = ? AND last_name = ?",
+            [trim($p['first_name']), trim($p['last_name'])]
+        );
+        if (count($same) === 1) {
+            $user = $same[0];
+            if (!$user['is_active']) {
+                return [null, 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อฝ่ายทะเบียน'];
+            }
+            q('UPDATE users SET prefix = ?, email = COALESCE(email, ?), external_id = ? WHERE id = ?',
+                [$p['prefix'] ?: $user['prefix'], $p['email'], $p['username'], $user['id']]);
+            audit('university.link_staff', ['username' => $p['username'], 'local_username' => $user['username']]);
+            return [q_one('SELECT * FROM users WHERE id = ?', [$user['id']]), null];
+        }
+
+        $user = self::upsertFromProfile(['role' => 'teacher'] + $p);
+        if (!$user) {
+            return [null, 'ข้อมูลจาก API มหาวิทยาลัยไม่ครบ ไม่สามารถสร้างบัญชีได้'];
+        }
+        // แจ้งผู้ดูแลระบบ/ฝ่ายทะเบียน ให้ตรวจว่าเป็นอาจารย์จริง (ระงับบัญชีได้ที่หน้าจัดการผู้ใช้)
+        foreach (q_all("SELECT id FROM users WHERE role IN ('admin', 'registrar') AND is_active = 1") as $r) {
+            notify((int) $r['id'], 'มีบัญชีอาจารย์ใหม่จากระบบมหาวิทยาลัย',
+                full_name($user) . ' (' . $user['username'] . ') เข้าสู่ระบบครั้งแรก ระบบสร้างบัญชีอาจารย์ให้อัตโนมัติ',
+                '/registrar/users?role=teacher');
+        }
+        return [$user, null];
     }
 
     /** ดึงนักศึกษาจาก API ด้วยรหัส แล้วบันทึกลงระบบ */

@@ -60,7 +60,9 @@ page_header('เชื่อมต่อ API มหาวิทยาลัย',
                         : '<span class="text-warning">local</span> — บัญชีในระบบเท่านั้น (ตั้ง <code>AUTH_MODE=hybrid</code> เพื่อเปิด)' ?></dd>
                     <dt class="col-5">Endpoint เข้าสู่ระบบ</dt><dd class="col-7"><code><?= e($cfg['endpoints']['auth']) ?></code></dd>
                     <dt class="col-5">นักศึกษาใหม่</dt><dd class="col-7">สร้างบัญชีอัตโนมัติเมื่อเข้าสู่ระบบครั้งแรก<?= $cfg['allowed_faccodes'] ? ' (เฉพาะคณะรหัส ' . e(implode(', ', $cfg['allowed_faccodes'])) . ')' : '' ?></dd>
-                    <dt class="col-5">อาจารย์/บุคลากร</dt><dd class="col-7">ต้องมีบัญชีในระบบก่อน (ชื่อผู้ใช้หรืออีเมลตรงกับ RMUTSV)</dd>
+                    <dt class="col-5">อาจารย์/บุคลากร</dt><dd class="col-7"><?= setting('auto_create_staff', '1') === '1'
+                        ? 'สร้างบัญชีอาจารย์อัตโนมัติเมื่อเข้าสู่ระบบครั้งแรก (type <code>' . e(implode(', ', $cfg['staff_types'])) . '</code>) — ถ้าชื่อ-นามสกุลตรงกับอาจารย์ที่มีอยู่ ผูกกับบัญชีเดิม'
+                        : 'ต้องมีบัญชีในระบบก่อน (ชื่อผู้ใช้หรืออีเมลตรงกับ RMUTSV) — เปิดสร้างอัตโนมัติได้ที่หน้าตั้งค่าระบบ' ?></dd>
                     <dt class="col-5">ค่า type นักศึกษา</dt><dd class="col-7"><code><?= e(implode(', ', $cfg['student_types'])) ?></code></dd>
                 </dl>
             </div>
