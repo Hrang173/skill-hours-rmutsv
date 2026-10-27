@@ -70,7 +70,7 @@ if ($year === ''): ?>
             <div class="card-header bg-white fw-semibold">ผลการค้นหา "<?= e($kw) ?>" <span class="badge text-bg-light border"><?= count($found) ?></span></div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light"><tr><th>รหัส</th><th>ชื่อ-สกุล</th><th>ปีที่เข้า</th><th>ชั่วโมง</th><th>ขั้นตอน</th></tr></thead>
+                    <thead class="table-light"><tr><th>รหัส</th><th>ชื่อ-สกุล</th><th>ปีที่เข้า</th><th>ชั่วโมง</th><th>ขั้นตอน</th><th></th></tr></thead>
                     <tbody>
                     <?php foreach ($found as $s): ?>
                         <tr>
@@ -79,9 +79,10 @@ if ($year === ''): ?>
                             <td><?php if ($s['entry_year_calc']): ?><a href="?year=<?= (int) $s['entry_year_calc'] ?>">ปี <?= substr((string) $s['entry_year_calc'], 2) ?></a><?php else: ?>-<?php endif; ?></td>
                             <td class="small"><?= fmt_hours($s['earned']) ?> / <?= fmt_hours($s['required']) ?> ชม.</td>
                             <td><?php stage_badge($s['stage']); ?></td>
+                            <td class="text-end"><?php if ($s['stage'] === 'certified'): ?><a href="/print/form?student_id=<?= $s['id'] ?>" target="_blank" class="btn btn-sm btn-success"><i class="bi bi-printer me-1"></i>พิมพ์</a><?php endif; ?></td>
                         </tr>
                     <?php endforeach; ?>
-                    <?php if (!$found): ?><tr><td colspan="5" class="text-center text-muted py-4">ไม่พบนักศึกษา</td></tr><?php endif; ?>
+                    <?php if (!$found): ?><tr><td colspan="6" class="text-center text-muted py-4">ไม่พบนักศึกษา</td></tr><?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -136,7 +137,7 @@ if ($year === ''): ?>
     <div class="card">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-light"><tr><th>รหัส</th><th>ชื่อ-สกุล</th><th>แผน</th><th style="min-width:170px">ชั่วโมง</th><th>ขั้นตอน</th><th>รายละเอียด</th></tr></thead>
+                <thead class="table-light"><tr><th>รหัส</th><th>ชื่อ-สกุล</th><th>แผน</th><th style="min-width:170px">ชั่วโมง</th><th>ขั้นตอน</th><th>รายละเอียด</th><th></th></tr></thead>
                 <tbody>
                 <?php foreach ($students as $s): $pct = min(100, $s['required'] > 0 ? $s['earned'] / $s['required'] * 100 : 0); ?>
                     <tr>
@@ -153,9 +154,14 @@ if ($year === ''): ?>
                             <?php if ($s['unrecorded']): ?><div>รออาจารย์บันทึกผล <?= (int) $s['unrecorded'] ?> รายการ</div><?php endif; ?>
                             <?php if ($s['stage'] === 'certified'): ?><div><?= e($s['certified_by']) ?> · <?= thai_date($s['certified_at']) ?></div><?php endif; ?>
                         </td>
+                        <td class="text-end text-nowrap">
+                            <?php if ($s['stage'] === 'certified'): ?>
+                                <a href="/print/form?student_id=<?= $s['id'] ?>" target="_blank" class="btn btn-sm btn-success" title="พิมพ์แบบบันทึกที่หัวหน้าหลักสูตรเซ็นยืนยันแล้ว"><i class="bi bi-printer me-1"></i>พิมพ์</a>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
-                <?php if (!$students): ?><tr><td colspan="6" class="text-center text-muted py-4">ไม่มีนักศึกษาในขั้นตอนนี้</td></tr><?php endif; ?>
+                <?php if (!$students): ?><tr><td colspan="7" class="text-center text-muted py-4">ไม่มีนักศึกษาในขั้นตอนนี้</td></tr><?php endif; ?>
                 </tbody>
             </table>
         </div>
