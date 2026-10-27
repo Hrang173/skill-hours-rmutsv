@@ -10,9 +10,9 @@
     if (!cfg || !dialog) return;
 
     const SLOTS = ['sign', 'paren', 'pos'];
-    const defaults = () => ({
-        // เซ็นยืนยันในระบบแล้ว → ใช้ลายเซ็นนั้นเป็นค่าเริ่มต้น
-        sign: cfg.certSign || { mode: 'none', value: '' },
+    // เซ็นยืนยันในระบบแล้ว → ใช้ค่าที่เซ็นไว้เป็นค่าเริ่มต้น
+    const defaults = () => cfg.certSlots ? JSON.parse(JSON.stringify(cfg.certSlots)) : ({
+        sign: { mode: 'none', value: '' },
         paren: { mode: 'name', value: cfg.headName || '' },
         pos: { mode: 'none', value: '' },
     });

@@ -147,3 +147,20 @@ details > summary { cursor: pointer; }
 /* การ์ดที่คลิกได้ (หน้าติดตามขั้นตอนนักศึกษา) */
 .card-hover { transition: box-shadow .15s, transform .15s; }
 .card-hover:hover { box-shadow: 0 .5rem 1.25rem rgba(30, 58, 138, .12); transform: translateY(-2px); }
+
+/* ตัวอย่างท้ายแบบบันทึกสำหรับหัวหน้าหลักสูตรเซ็น — ขนาด/เส้นเหมือน print.css (.head-sign) ขยาย 1.4 เท่า */
+.cert-mock-wrap { background: #fff; border: 1px solid #e3e7ef; border-radius: .5rem; padding: .75rem 1rem; overflow-x: auto; }
+.cert-mock { zoom: 1.4; width: 118mm; line-height: 1.95; font-size: 14px; color: #000; font-family: 'Sarabun', sans-serif; }
+.cert-mock .paren { padding-left: 11mm; }
+.cert-line {
+    display: inline-block; position: relative; vertical-align: bottom; min-height: 1.35em; text-align: center;
+    border-bottom: 1.3px dotted #000; padding: 0 4px; cursor: pointer; border-radius: 2px;
+}
+.cert-line.w-sign { width: 70mm; }
+.cert-line.w-headname, .cert-line.w-headpos { width: 62mm; }
+.cert-line:hover { background: rgba(30, 58, 138, .05); }
+.cert-line.active { background: rgba(30, 58, 138, .08); outline: 1px dashed rgba(30, 58, 138, .45); }
+.cert-line.empty .hint { color: #9aa3b5; font-size: 11px; }
+.cert-line .slot-sig { height: 12mm; max-width: 100%; object-fit: contain; vertical-align: bottom; margin-bottom: -1.5mm; }
+.cert-line .line-pad { position: absolute; left: 0; bottom: -1.5mm; width: 100%; height: 15mm; cursor: crosshair; touch-action: none;
+    background: repeating-linear-gradient(0deg, transparent 0 calc(100% - 1.5mm - 1px), rgba(30, 58, 138, .25) calc(100% - 1.5mm - 1px) calc(100% - 1.5mm)); }

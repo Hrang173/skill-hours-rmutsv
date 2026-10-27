@@ -33,9 +33,20 @@ $head = q_one("SELECT id, prefix, first_name, last_name FROM users WHERE role = 
 $headName = $head ? full_name($head) : '';
 // ลงชื่อท้ายเอกสารได้เฉพาะหัวหน้าหลักสูตรของสาขานี้
 $canSign = $head && (int) $head['id'] === (int) $me['id'];
-// หัวหน้าหลักสูตรเซ็นยืนยันในระบบแล้ว → แสดงในบรรทัด "ลงชื่อ" ทุกครั้งที่พิมพ์ (ใครพิมพ์ก็ได้)
+// หัวหน้าหลักสูตรเซ็นยืนยันในระบบแล้ว → แสดงทั้ง 3 บรรทัดท้ายเอกสารทุกครั้งที่พิมพ์ (ใครพิมพ์ก็ได้)
 $cert = App\Services\ProgressService::certification($sid);
-$certSign = $cert ? ['mode' => $cert['sign_method'] === 'online' ? 'signature' : 'name', 'value' => $cert['signature_data'] ?: $cert['signer_name']] : null;
+$certSlots = $cert ? App\Services\ProgressService::certSlots($cert, $headName) : null;
+$slotHtml = function (string $slot, string $default = '') use ($certSlots): string {
+    $s = $certSlots[$slot] ?? null;
+    if (!$s) {
+        return e($default);
+    }
+    return match ($s['mode']) {
+        'signature' => '<img src="' . e($s['value']) . '" alt="ลายเซ็น" class="slot-sig">',
+        'name'      => e($s['value']),
+        default     => '',
+    };
+};
 
 $records = HoursService::records($sid, $semesterId);
 $sum = HoursService::summary($sid, $st['program_type']);
@@ -195,10 +206,9 @@ audit('print.form', ['student_id' => $sid, 'semester_id' => $semesterId]);
             <?php endif; ?>
         </div>
         <div class="head-sign">
-            <div>ลงชื่อ <span class="fill w-sign slot" data-slot="sign"><?php if ($certSign): ?><?= $certSign['mode'] === 'signature'
-                ? '<img src="' . e($certSign['value']) . '" alt="ลายเซ็น" class="slot-sig">' : e($certSign['value']) ?><?php endif; ?></span></div>
-            <div class="paren">( <span class="fill w-headname slot" data-slot="paren"><?= e($headName) ?></span> )</div>
-            <div>หัวหน้าหลักสูตร<span class="fill w-headpos slot" data-slot="pos"></span></div>
+            <div>ลงชื่อ <span class="fill w-sign slot" data-slot="sign"><?= $slotHtml('sign') ?></span></div>
+            <div class="paren">( <span class="fill w-headname slot" data-slot="paren"><?= $slotHtml('paren', $headName) ?></span> )</div>
+            <div>หัวหน้าหลักสูตร<span class="fill w-headpos slot" data-slot="pos"><?= $slotHtml('pos') ?></span></div>
         </div>
     </div>
     <div class="meta"><?= $cert ? 'หัวหน้าหลักสูตรเซ็นยืนยันเมื่อ ' . thai_date($cert['certified_at']) . ' · ' : '' ?>พิมพ์จาก<?= e(config('app.name')) ?> เมื่อ <?= thai_date(date('Y-m-d H:i:s'), true) ?> · หน้า <?= $pi + 1 ?>/<?= $pageCount ?></div>
@@ -247,10 +257,11 @@ audit('print.form', ['student_id' => $sid, 'semester_id' => $semesterId]);
 </dialog>
 <script>
 window.PRINT_SIGN = <?= json_encode([
-    'storageKey'     => 'skillhours.printSign.' . $me['id'] . '.' . $sid,
+    // ผูกกับการเซ็นยืนยัน: เซ็นยืนยันใหม่/ยกเลิก → ค่าที่ปรับไว้ในเบราว์เซอร์เดิมไม่ทับ
+    'storageKey'     => 'skillhours.printSign.' . $me['id'] . '.' . $sid . '.' . ($cert['id'] ?? 0),
     'headName'       => $headName,
     'savedSignature' => $me['signature_data'] ?: null,
-    'certSign'       => $certSign,
+    'certSlots'      => $certSlots,
 ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;
 </script>
 <script src="<?= asset('js/signature.js') ?>"></script>

@@ -225,3 +225,61 @@ function stage_bar(int $studentId): void
     </div>
     <?php
 }
+
+/**
+ * ตัวเซ็นท้ายแบบบันทึกของหัวหน้าหลักสูตร: ตัวอย่างขนาดจริง 3 บรรทัด (ลงชื่อ / ( ) / หัวหน้าหลักสูตร)
+ * คลิกบรรทัดแล้วเลือก เซ็นตรงบรรทัดนี้ / ใช้ลายเซ็นที่บันทึกไว้ / เซ็นในกรอบ / พิมพ์ชื่อ / เว้นว่าง
+ * ผลส่งเป็น JSON ใน input name="slots" (ตรวจที่ ProgressService::slotsFromRequest) — JS: public/assets/js/head-sign.js
+ */
+function head_sign_editor(array $me, string $major): void
+{
+    $cfg = [
+        'headName' => full_name($me),
+        'saved'    => $me['signature_data'] ?: null,
+        'labels'   => App\Services\ProgressService::SLOTS,
+    ];
+    ?>
+    <div class="head-sign-editor" data-head-sign data-config="<?= e(json_encode($cfg, JSON_UNESCAPED_UNICODE)) ?>">
+        <input type="hidden" name="slots" data-slots-output>
+        <div class="small text-muted mb-1">ตัวอย่างท้ายแบบบันทึก (ขนาดจริง ขยายให้เซ็นง่าย) — <b>คลิกที่บรรทัด</b>เพื่อเซ็นหรือแก้ไข</div>
+        <div class="cert-mock-wrap">
+            <div class="cert-mock">
+                <div>ลงชื่อ <span class="cert-line w-sign" data-line="sign"></span></div>
+                <div class="paren">( <span class="cert-line w-headname" data-line="paren"></span> )</div>
+                <div>หัวหน้าหลักสูตร<span class="cert-line w-headpos" data-line="pos"></span></div>
+            </div>
+        </div>
+
+        <div class="cert-controls mt-3">
+            <div class="fw-semibold mb-2">บรรทัด "<span data-active-label></span>"</div>
+            <div class="btn-group flex-wrap mb-2" role="group">
+                <?php foreach (['signature' => ['pen', 'ลายเซ็น'], 'name' => ['fonts', 'พิมพ์ชื่อ'], 'none' => ['dash-circle', 'เว้นว่าง']] as $m => [$icon, $label]): ?>
+                    <input type="radio" class="btn-check" name="hs_mode" id="hs_<?= $m ?>" value="<?= $m ?>">
+                    <label class="btn btn-sm btn-outline-primary" for="hs_<?= $m ?>"><i class="bi bi-<?= $icon ?> me-1"></i><?= $label ?></label>
+                <?php endforeach; ?>
+            </div>
+            <div data-panel="signature" hidden>
+                <div class="d-flex flex-wrap gap-3 mb-2">
+                    <label class="form-check"><input class="form-check-input" type="radio" name="hs_src" value="line"> เซ็นตรงบรรทัดนี้ (ในตัวอย่างด้านบน)</label>
+                    <?php if ($me['signature_data']): ?>
+                        <label class="form-check"><input class="form-check-input" type="radio" name="hs_src" value="saved"> ใช้ลายเซ็นที่บันทึกไว้
+                            <img src="<?= e($me['signature_data']) ?>" alt="" class="sig-thumb ms-1"></label>
+                    <?php endif; ?>
+                    <label class="form-check"><input class="form-check-input" type="radio" name="hs_src" value="pad"> เซ็นในกรอบใหญ่ด้านล่าง</label>
+                </div>
+                <div class="signature-pad-wrap mb-1" data-pad-wrap hidden><canvas data-big-pad width="600" height="200"></canvas></div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="small text-muted" data-src-hint></span>
+                    <button type="button" class="btn btn-sm btn-light" data-clear><i class="bi bi-eraser me-1"></i>ล้างลายเซ็นบรรทัดนี้</button>
+                </div>
+                <?php if (!$me['signature_data']): ?>
+                    <div class="small mt-1"><a href="/signature" target="_blank">บันทึกลายเซ็นประจำตัว (เซ็น หรืออัปโหลดรูป/PDF)</a> ไว้ใช้ครั้งต่อไป</div>
+                <?php endif; ?>
+            </div>
+            <div data-panel="name" hidden>
+                <input type="text" class="form-control" maxlength="200" data-name-input placeholder="พิมพ์ชื่อ-สกุล">
+            </div>
+        </div>
+    </div>
+    <?php
+}

@@ -68,4 +68,61 @@ final class ProgressService
     {
         return q_one('SELECT * FROM student_certifications WHERE student_id = ?', [$studentId]);
     }
+
+    /** บรรทัดท้ายแบบบันทึก (ลงชื่อ / ในวงเล็บ / หัวหน้าหลักสูตร) */
+    public const SLOTS = ['sign' => 'ลงชื่อ', 'paren' => 'ในวงเล็บ ( )', 'pos' => 'หัวหน้าหลักสูตร'];
+
+    /**
+     * ลายเซ็น/ชื่อ ทั้ง 3 บรรทัดของการเซ็นยืนยัน [slot => ['mode' => signature|name|none, 'value' => ...]]
+     * (การเซ็นแบบเก่าที่ยังไม่มี slots: บรรทัดลงชื่อจากลายเซ็น, ในวงเล็บ = ชื่อหัวหน้าหลักสูตร)
+     */
+    public static function certSlots(array $cert, string $headName): array
+    {
+        $slots = json_decode((string) ($cert['slots'] ?? ''), true);
+        if (is_array($slots)) {
+            return $slots;
+        }
+        return [
+            'sign'  => $cert['sign_method'] === 'online'
+                ? ['mode' => 'signature', 'value' => $cert['signature_data']]
+                : ['mode' => 'name', 'value' => $cert['signer_name']],
+            'paren' => ['mode' => 'name', 'value' => $headName],
+            'pos'   => ['mode' => 'none', 'value' => ''],
+        ];
+    }
+
+    /**
+     * อ่าน + ตรวจ slots จากฟอร์มเซ็นยืนยัน (JSON ใน $_POST['slots'])
+     * @return array{0: ?array, 1: ?string} [slots, error]
+     */
+    public static function slotsFromRequest(): array
+    {
+        $in = json_decode((string) ($_POST['slots'] ?? ''), true);
+        if (!is_array($in)) {
+            return [null, 'กรุณาเซ็นชื่อก่อนยืนยัน'];
+        }
+        $out = [];
+        foreach (array_keys(self::SLOTS) as $slot) {
+            $mode = $in[$slot]['mode'] ?? 'none';
+            $value = (string) ($in[$slot]['value'] ?? '');
+            if ($mode === 'signature') {
+                if (!valid_signature($value)) {
+                    return [null, 'ลายเซ็นบรรทัด "' . self::SLOTS[$slot] . '" ไม่ถูกต้อง กรุณาเซ็นใหม่'];
+                }
+            } elseif ($mode === 'name') {
+                $value = mb_substr(trim($value), 0, 200);
+                if ($value === '') {
+                    return [null, 'กรุณาพิมพ์ชื่อในบรรทัด "' . self::SLOTS[$slot] . '"'];
+                }
+            } else {
+                $mode = 'none';
+                $value = '';
+            }
+            $out[$slot] = ['mode' => $mode, 'value' => $value];
+        }
+        if ($out['sign']['mode'] === 'none') {
+            return [null, 'กรุณาเซ็นหรือพิมพ์ชื่อในบรรทัด "ลงชื่อ"'];
+        }
+        return [$out, null];
+    }
 }

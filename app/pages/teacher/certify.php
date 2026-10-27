@@ -4,8 +4,8 @@ use App\Services\ProgressService;
 /**
  * หัวหน้าหลักสูตรเซ็นยืนยันนักศึกษาที่เก็บชั่วโมงครบแล้ว (ขั้นตอนสุดท้าย)
  * - เฉพาะอาจารย์ที่เป็นหัวหน้าหลักสูตร และเฉพาะนักศึกษาสาขาของตัวเอง
- * - เลือกหลายคนแล้วเซ็นครั้งเดียว: ลายเซ็นที่บันทึกไว้ / เซ็นใหม่ / พิมพ์ชื่อ
- * - ลายเซ็นจะแสดงในบรรทัด "ลงชื่อ" ท้ายแบบบันทึกของนักศึกษาคนนั้น ไม่ว่าใครเป็นคนพิมพ์
+ * - เซ็นบนตัวอย่างท้ายแบบบันทึก (ลงชื่อ / ( ) / หัวหน้าหลักสูตร) — เซ็นตรงบรรทัด, ใช้ลายเซ็นที่บันทึกไว้, เซ็นในกรอบ หรือพิมพ์ชื่อ
+ * - เลือกหลายคนแล้วเซ็นครั้งเดียวได้ · ผลจะแสดงท้ายแบบบันทึกของนักศึกษาคนนั้น ไม่ว่าใครเป็นคนพิมพ์
  */
 $me = current_user();
 $major = $me['head_of_major'];
@@ -25,7 +25,7 @@ if (is_post()) {
         flash('success', 'ยกเลิกการเซ็นยืนยันแล้ว');
         redirect('/teacher/certify', ['tab' => 'done']);
     }
-    [$sig, $err] = signature_from_request($me);
+    [$slots, $err] = ProgressService::slotsFromRequest();
     if (!$ids) {
         flash('danger', 'กรุณาเลือกนักศึกษาอย่างน้อย 1 คน');
     } elseif ($err) {
@@ -36,11 +36,14 @@ if (is_post()) {
         $ok = q_all("SELECT st.user_id, COALESCE(h.earned, 0) AS earned $from
                       WHERE st.user_id IN ($in) AND st.major = ? AND $stageSql = 'wait_head'", [...$ids, $major]);
         foreach ($ok as $r) {
-            q('INSERT INTO student_certifications (student_id, head_id, major, hours, sign_method, signature_data, signer_name) VALUES (?,?,?,?,?,?,?)',
-                [$r['user_id'], $me['id'], $major, $r['earned'], $sig['sign_method'], $sig['signature_data'], $sig['signer_name']]);
+            q('INSERT INTO student_certifications (student_id, head_id, major, hours, sign_method, signature_data, signer_name, slots) VALUES (?,?,?,?,?,?,?,?)',
+                [$r['user_id'], $me['id'], $major, $r['earned'],
+                 $slots['sign']['mode'] === 'signature' ? 'online' : 'name',
+                 $slots['sign']['mode'] === 'signature' ? $slots['sign']['value'] : null,
+                 full_name($me), json_encode($slots, JSON_UNESCAPED_UNICODE)]);
             notify((int) $r['user_id'], 'หัวหน้าหลักสูตรเซ็นยืนยันการฝึกทักษะวิชาชีพของคุณแล้ว', 'พิมพ์แบบบันทึกได้ที่เมนู "พิมพ์แบบบันทึกทักษะ"', '/print/form');
         }
-        audit('certify.sign', ['students' => array_column($ok, 'user_id'), 'method' => $sig['sign_method']]);
+        audit('certify.sign', ['students' => array_column($ok, 'user_id'), 'modes' => array_map(fn($s) => $s['mode'], $slots)]);
         flash('success', 'เซ็นยืนยันแล้ว ' . count($ok) . ' คน' . (count($ok) < count($ids) ? ' (ข้ามคนที่ชั่วโมงยังไม่ครบหรือเซ็นไปแล้ว)' : ''));
     }
     redirect('/teacher/certify');
@@ -65,8 +68,9 @@ page_header('เซ็นยืนยันนักศึกษา', 'หัว
 <?php if ($tab === 'wait'): ?>
 <form method="post" class="row g-3">
     <?= csrf_field() ?>
-    <div class="col-lg-7">
+    <div class="col-12">
         <div class="card">
+            <div class="card-header bg-white fw-semibold">1. เลือกนักศึกษา</div>
             <div class="table-responsive">
                 <table class="table align-middle mb-0">
                     <thead class="table-light"><tr>
@@ -90,11 +94,11 @@ page_header('เซ็นยืนยันนักศึกษา', 'หัว
             </div>
         </div>
     </div>
-    <div class="col-lg-5">
+    <div class="col-12">
         <div class="card">
+            <div class="card-header bg-white fw-semibold">2. เซ็นท้ายแบบบันทึก</div>
             <div class="card-body">
-                <?php signature_chooser($me, 'ลายเซ็นหัวหน้าหลักสูตร'); ?>
-                <div class="form-text mt-2">ลายเซ็นนี้จะแสดงในบรรทัด "ลงชื่อ" ท้ายแบบบันทึกการฝึกทักษะวิชาชีพของนักศึกษาที่เลือก</div>
+                <?php head_sign_editor($me, $major); ?>
             </div>
             <div class="card-footer bg-white text-end">
                 <button class="btn btn-primary" name="action" value="certify" <?= $list ? '' : 'disabled' ?>><i class="bi bi-patch-check me-1"></i>เซ็นยืนยันนักศึกษาที่เลือก</button>
@@ -130,4 +134,4 @@ page_header('เซ็นยืนยันนักศึกษา', 'หัว
     </div>
 </div>
 <?php endif; ?>
-<?php layout_end(['js/signature.js']); ?>
+<?php layout_end(['js/signature.js', 'js/head-sign.js']); ?>
