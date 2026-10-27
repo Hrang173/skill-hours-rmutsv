@@ -42,6 +42,7 @@ return [
     'registrar/skills'          => ['registrar/skills.php', OFFICE_ROLES],
     'registrar/semesters'       => ['registrar/semesters.php', OFFICE_ROLES],
     'registrar/program-heads'   => ['registrar/program_heads.php', OFFICE_ROLES],
+    'registrar/staff-positions' => ['registrar/staff_positions.php', OFFICE_ROLES],
 
     // ผู้ดูแลระบบ
     'admin'                     => ['registrar/dashboard.php', ADMIN_ROLES],
