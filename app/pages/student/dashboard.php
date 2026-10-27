@@ -25,6 +25,7 @@ page_header(
     'รหัสนักศึกษา ' . $me['student_code'] . ' · ' . $me['major'] . ' · แผนการเรียน ' . program_label($me['program_type']),
     '<a href="/print/form" class="btn btn-outline-primary"><i class="bi bi-printer me-1"></i>พิมพ์แบบบันทึกทักษะ</a>'
 );
+stage_bar((int) $me['id']);
 ?>
 <div class="row g-3 mb-4">
     <div class="col-lg-6">

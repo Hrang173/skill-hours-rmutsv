@@ -54,6 +54,7 @@ if (is_office()) {
 
 layout_start(full_name($st));
 page_header(full_name($st), 'รหัสนักศึกษา ' . $st['student_code'], $actions);
+stage_bar($id);
 ?>
 <div class="row g-3 mb-3">
     <div class="col-lg-4">

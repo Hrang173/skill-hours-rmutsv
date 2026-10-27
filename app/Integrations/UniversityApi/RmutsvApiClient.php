@@ -180,7 +180,8 @@ final class RmutsvApiClient implements UniversityApiInterface
             'major'        => $major ?: null,
             // API ไม่บอกแผนการเรียน — ดูจากรหัสนักศึกษา (หลักที่ 4: 4 = 4 ปี, 2 = เทียบโอน)
             'program_type' => $isStudent ? program_type_from_code($studentCode) : null,
-            'entry_year'   => null,
+            // ปีที่เข้าจากรหัสนักศึกษา หลักที่ 2-3 (666415850004 → 2566)
+            'entry_year'   => $isStudent ? entry_year_from_code($studentCode) : null,
             'email'        => $str('email') ?: null,
             'external_id'  => $username,
             'raw_type'     => $str('type'),

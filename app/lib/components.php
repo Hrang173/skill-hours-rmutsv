@@ -41,13 +41,13 @@ function sessions_editor(array $sessions = []): void
  * ส่วนเลือกวิธีลงลายมือชื่ออาจารย์ผู้ควบคุม: ลายเซ็นออนไลน์ หรือ กรอกชื่อ
  * ค่าที่ส่งไป: sign_method, signature_data, signer_name, save_signature
  */
-function signature_chooser(array $teacher): void
+function signature_chooser(array $teacher, string $label = 'ลายมือชื่ออาจารย์ผู้ควบคุม'): void
 {
     $saved = $teacher['signature_data'] ?? null;
     $name = full_name($teacher);
     ?>
     <div class="signature-chooser" data-signature-chooser>
-        <label class="form-label fw-semibold">ลายมือชื่ออาจารย์ผู้ควบคุม</label>
+        <label class="form-label fw-semibold"><?= e($label) ?></label>
         <div class="btn-group w-100 mb-3" role="group">
             <input type="radio" class="btn-check" name="sign_method" id="sm_online" value="online" checked>
             <label class="btn btn-outline-primary" for="sm_online"><i class="bi bi-pen me-1"></i>ลายเซ็นออนไลน์</label>
@@ -197,5 +197,31 @@ function skill_fixed_field(array $names): void
     <div class="form-control bg-light" data-skill-fixed data-current-year="<?= current_academic_year() ?>"
          data-skills="<?= e(json_encode($names, JSON_UNESCAPED_UNICODE)) ?>"><?= e($names[current_academic_year()] ?? '-') ?></div>
     <div class="form-text">ฝ่ายทะเบียนเป็นผู้กำหนดทักษะให้อาจารย์ (1 ท่าน รับผิดชอบ 1 ทักษะต่อปีการศึกษา)</div>
+    <?php
+}
+
+/** ป้ายขั้นตอนของนักศึกษา (ดู ProgressService::STAGES) */
+function stage_badge(string $stage): void
+{
+    [$label, $color, $icon] = App\Services\ProgressService::STAGES[$stage] ?? App\Services\ProgressService::STAGES['collecting'];
+    echo '<span class="badge text-bg-' . $color . ' text-wrap"><i class="bi bi-' . $icon . ' me-1"></i>' . $label . '</span>';
+}
+
+/** แถบแสดงขั้นตอนปัจจุบันของนักศึกษา (หน้ารายละเอียดนักศึกษา / ภาพรวมของนักศึกษา) */
+function stage_bar(int $studentId): void
+{
+    $p = App\Services\ProgressService::forStudent($studentId);
+    if (!$p) {
+        return;
+    }
+    ?>
+    <div class="alert alert-light border d-flex flex-wrap align-items-center gap-2 py-2">
+        <span class="fw-semibold">ขั้นตอนปัจจุบัน:</span> <?php stage_badge($p['stage']); ?>
+        <span class="small text-muted">
+            <?php if ($p['pending']): ?>· คำขอรออาจารย์อนุมัติ <?= (int) $p['pending'] ?> รายการ <?php endif; ?>
+            <?php if ($p['unrecorded']): ?>· รออาจารย์บันทึกผล <?= (int) $p['unrecorded'] ?> รายการ <?php endif; ?>
+            <?php if ($p['stage'] === 'certified'): ?>· เซ็นโดย <?= e($p['certified_by']) ?> เมื่อ <?= thai_date($p['certified_at']) ?><?php endif; ?>
+        </span>
+    </div>
     <?php
 }

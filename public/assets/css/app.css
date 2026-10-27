@@ -143,3 +143,7 @@ details > summary { cursor: pointer; }
     body { background: #fff; }
     .card { box-shadow: none; }
 }
+
+/* การ์ดที่คลิกได้ (หน้าติดตามขั้นตอนนักศึกษา) */
+.card-hover { transition: box-shadow .15s, transform .15s; }
+.card-hover:hover { box-shadow: 0 .5rem 1.25rem rgba(30, 58, 138, .12); transform: translateY(-2px); }

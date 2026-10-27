@@ -29,12 +29,14 @@ return [
     'teacher/activity/edit'     => ['teacher/activity_form.php', ['teacher']],
     'teacher/activity'          => ['teacher/activity_view.php', ['teacher']],
     'teacher/assign'            => ['teacher/assign.php', ['teacher']],
+    'teacher/certify'           => ['teacher/certify.php', ['teacher']],
     'teacher/students'          => ['common/student_search.php', ['teacher']],
     'teacher/signature'         => ['common/signature.php', ['teacher']],
 
     // ฝ่ายทะเบียน (admin เข้าได้ด้วย)
     'registrar'                 => ['registrar/dashboard.php', OFFICE_ROLES],
     'registrar/students'        => ['common/student_search.php', OFFICE_ROLES],
+    'registrar/progress'        => ['registrar/progress.php', OFFICE_ROLES],
     'registrar/export'          => ['registrar/export.php', OFFICE_ROLES],
     'registrar/users'           => ['registrar/users.php', OFFICE_ROLES],
     'registrar/user/edit'       => ['registrar/user_form.php', OFFICE_ROLES],

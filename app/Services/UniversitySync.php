@@ -106,11 +106,11 @@ final class UniversitySync
                 }
                 // ไม่ทับสาขาที่ฝ่ายทะเบียนตั้งไว้ (เติมสาขาให้เฉพาะตอนที่ยังว่าง)
                 q(
-                    "UPDATE students SET faculty = COALESCE(?, faculty),
+                    "UPDATE students SET faculty = COALESCE(?, faculty), entry_year = COALESCE(entry_year, ?),
                             major = CASE WHEN major IN ('', '-') THEN COALESCE(?, major) ELSE major END,
                             synced_at = NOW()
                       WHERE user_id = ?",
-                    [$p['faculty'], $p['major'], $user['id']]
+                    [$p['faculty'], $p['entry_year'] ?? null, $p['major'], $user['id']]
                 );
             }
             return [q_one('SELECT * FROM users WHERE id = ?', [$user['id']]), null];

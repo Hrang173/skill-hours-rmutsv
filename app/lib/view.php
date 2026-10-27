@@ -20,6 +20,7 @@ function nav_items(string $role): array
             ['/teacher/activity/new', 'plus-circle',    'สร้างกิจกรรม'],
             ['/teacher/assign',       'person-check',   'มอบหมายรายบุคคล'],
             ['/teacher/students',     'search',         'ค้นหานักศึกษา'],
+            ...((current_user()['head_of_major'] ?? null) ? [['/teacher/certify', 'patch-check', 'เซ็นยืนยัน (หัวหน้าหลักสูตร)']] : []),
             ['/signature',            'pen',            'ลายเซ็นของฉัน'],
         ],
         'registrar' => office_nav('/registrar'),
@@ -40,6 +41,7 @@ function office_nav(string $home): array
 {
     return [
         [$home,                      'speedometer2', 'ภาพรวม'],
+        ['/registrar/progress',      'diagram-3',    'ติดตามขั้นตอนนักศึกษา'],
         ['/registrar/students',      'search',       'ค้นหานักศึกษา'],
         ['/registrar/users',         'people',       'จัดการผู้ใช้'],
         ['/registrar/import',        'upload',       'นำเข้านักศึกษา (CSV)'],

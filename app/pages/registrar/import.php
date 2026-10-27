@@ -50,7 +50,7 @@ if (is_post()) {
         $type = $given !== ''
             ? (in_array($given, ['transfer', 'เทียบโอน', 't'], true) ? 'transfer' : '4year')
             : (program_type_from_code($code) ?? '4year');
-        $year = (int) ($r['entry_year'] ?? 0) ?: null;
+        $year = (int) ($r['entry_year'] ?? 0) ?: entry_year_from_code($code);
         $email = filter_var($r['email'] ?? '', FILTER_VALIDATE_EMAIL) ?: null;
         $major = ($r['major'] ?? '') ?: setting('default_major');
 

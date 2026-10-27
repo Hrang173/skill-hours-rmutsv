@@ -264,6 +264,18 @@ function program_type_from_code(?string $code): ?string
     return ['4' => '4year', '2' => 'transfer'][$m[1]] ?? null;
 }
 
+/**
+ * ปีที่เข้าศึกษา (พ.ศ.) จากรหัสนักศึกษา หลักที่ 2-3: 666415850004 → 2566, 667215850003 → 2567
+ * (รับรหัสแบบมี s นำหน้าได้) คืน null ถ้ารหัสไม่ใช่รูปแบบนี้
+ */
+function entry_year_from_code(?string $code): ?int
+{
+    if (!$code || !preg_match('/^s?\d(\d{2})\d{9,10}$/i', trim($code), $m)) {
+        return null;
+    }
+    return 2500 + (int) $m[1];
+}
+
 function program_label(?string $type): string
 {
     return $type === 'transfer' ? 'เทียบโอน' : '4 ปี';

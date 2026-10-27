@@ -26,7 +26,7 @@ if (is_post()) {
         'program_type' => input('program_type') === 'transfer' ? 'transfer' : '4year',
         'faculty'      => (string) input('faculty', setting('faculty_name')),
         'major'        => (string) input('major', setting('default_major')),
-        'entry_year'   => input_int('entry_year') ?: null,
+        'entry_year'   => input_int('entry_year') ?: entry_year_from_code((string) input('student_code', '')),
         'advisor_id'   => input_int('advisor_id') ?: null,
         'student_status' => in_array(input('student_status'), ['studying', 'graduated', 'inactive'], true) ? input('student_status') : 'studying',
     ];
@@ -96,7 +96,7 @@ page_header(($id ? 'แก้ไข' : 'เพิ่ม') . role_label($role), $
                         <option value="transfer" <?= $v('program_type') === 'transfer' ? 'selected' : '' ?>>เทียบโอน (50 ชม.)</option>
                     </select>
                 </div>
-                <div class="col-md-4"><label class="form-label">ปีที่เข้า (พ.ศ.)</label><input type="number" name="entry_year" class="form-control" min="2500" max="2700" value="<?= e($v('entry_year')) ?>"></div>
+                <div class="col-md-4"><label class="form-label">ปีที่เข้า (พ.ศ.)</label><input type="number" name="entry_year" class="form-control" min="2500" max="2700" value="<?= e($v('entry_year')) ?>" placeholder="ว่าง = จากรหัส"></div>
             <?php else: ?>
                 <div class="col-md-4"><label class="form-label">ชื่อผู้ใช้ *</label><input name="username" class="form-control" required value="<?= e($v('username')) ?>"></div>
             <?php endif; ?>
