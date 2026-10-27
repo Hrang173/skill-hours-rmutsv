@@ -110,6 +110,7 @@ table.record td.small { font-size: 12.5px; }
 .sign-dialog legend { font-weight: 700; padding: 0 6px; }
 .sign-dialog .seg { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 8px; }
 .sign-dialog .opt { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.sign-dialog .manage-sig { display: block; font-size: 13px; margin: 2px 0 6px; color: #1e3a8a; }
 .sign-dialog .saved-thumb { height: 34px; border: 1px solid #e3e7ef; border-radius: 4px; background: #fff; }
 .sign-dialog .pad-wrap { margin-top: 6px; }
 .sign-dialog canvas { width: 100%; height: auto; border: 2px dashed #b8c2d8; border-radius: 8px; touch-action: none; cursor: crosshair; background: #fff; }

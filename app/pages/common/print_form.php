@@ -222,6 +222,7 @@ audit('print.form', ['student_id' => $sid, 'semester_id' => $semesterId]);
                     <?php else: ?>
                         <input type="radio" name="<?= $slot ?>_src" value="draw" checked hidden>
                     <?php endif; ?>
+                    <a href="/signature" target="_blank" class="manage-sig"><i class="bi bi-box-arrow-up-right"></i> <?= $me['signature_data'] ? 'เปลี่ยน' : 'บันทึก' ?>ลายเซ็นของฉัน (เซ็น หรืออัปโหลดรูป/PDF)</a>
                     <div class="pad-wrap" data-draw <?= $me['signature_data'] ? 'hidden' : '' ?>>
                         <canvas data-pad width="520" height="160"></canvas>
                         <button type="button" class="link" data-clear>ล้าง</button>
