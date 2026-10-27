@@ -1,5 +1,5 @@
-/* ===== ลงชื่อท้ายแบบบันทึก (ช่อง "ลงชื่อ" และ "( )") — เฉพาะอาจารย์ / ฝ่ายทะเบียน / admin =====
- * แต่ละช่องเลือกได้: เว้นว่าง / ลายเซ็น (ลายเซ็นที่บันทึกไว้ หรือเซ็นใหม่) / พิมพ์ชื่อ
+/* ===== ลงชื่อท้ายแบบบันทึก (บรรทัด "ลงชื่อ") — เฉพาะหัวหน้าหลักสูตรของสาขานักศึกษา =====
+ * เลือกได้: เว้นว่าง / ลายเซ็น (ลายเซ็นที่บันทึกไว้ หรือเซ็นใหม่) / พิมพ์ชื่อ — ในวงเล็บแสดงชื่อหัวหน้าหลักสูตรเสมอ
  * ผลจะถูกวางลงทุกหน้าของเอกสาร และจำไว้ใน sessionStorage (เปลี่ยนภาค/ตัวเลือกแล้วไม่หาย)
  */
 (function () {
@@ -9,16 +9,15 @@
     const dialog = document.getElementById('signDialog');
     if (!cfg || !dialog) return;
 
-    const SLOTS = ['sign', 'paren'];
+    const SLOTS = ['sign'];
     const defaults = () => ({
         sign: { mode: 'none', value: '' },
-        paren: { mode: 'name', value: cfg.headName || '' },
     });
 
     const load = () => {
         try {
             const raw = sessionStorage.getItem(cfg.storageKey);
-            return raw ? { ...defaults(), ...JSON.parse(raw) } : defaults();
+            return raw ? { sign: { ...defaults().sign, ...JSON.parse(raw).sign } } : defaults();
         } catch (e) {
             return defaults();
         }
@@ -68,7 +67,7 @@
         editors[slot] = {
             fill(s) {
                 box.querySelector(`[name="${slot}_mode"][value="${s.mode}"]`).checked = true;
-                text.value = s.mode === 'name' ? s.value : (slot === 'paren' || !text.value ? cfg.headName || '' : text.value);
+                text.value = s.mode === 'name' ? s.value : (text.value || cfg.headName || '');
                 pad.clear();
                 refresh();
             },

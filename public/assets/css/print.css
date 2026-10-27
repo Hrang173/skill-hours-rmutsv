@@ -96,6 +96,7 @@ table.record td.small { font-size: 12.5px; }
     font-family: inherit; font-size: 15px; padding: 6px 14px; border-radius: 6px; border: 0; cursor: pointer;
     background: #fff; color: #1e3a8a; font-weight: 600;
 }
+.print-toolbar .sign-note { font-size: 13.5px; opacity: .85; }
 .sign-dialog {
     width: min(620px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto;
     border: 0; border-radius: 12px; padding: 20px 22px; font-family: inherit; font-size: 15px;
