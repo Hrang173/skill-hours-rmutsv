@@ -5,8 +5,8 @@ use App\Services\HoursService;
  * พิมพ์ "แบบบันทึกการฝึกทักษะวิชาชีพ" (A4 แนวนอน) ตามแบบฟอร์มของคณะ
  * - นักศึกษา: พิมพ์ได้เฉพาะของตัวเอง
  * - อาจารย์ / ฝ่ายทะเบียน / admin: ?student_id=... หรือ ?code=รหัสนักศึกษา
- * - ช่อง "ลงชื่อ" และ "หัวหน้าหลักสูตร" ท้ายเอกสาร: เฉพาะหัวหน้าหลักสูตรของสาขานักศึกษา เลือกลงเป็นลายเซ็นหรือพิมพ์ชื่อได้
- *   ในวงเล็บ ( ) แสดงชื่อหัวหน้าหลักสูตรอัตโนมัติ
+ * - ช่อง "ลงชื่อ", "( )" และ "หัวหน้าหลักสูตร" ท้ายเอกสาร: เฉพาะหัวหน้าหลักสูตรของสาขานักศึกษา เลือกลงเป็นลายเซ็นหรือพิมพ์ชื่อได้
+ *   ในวงเล็บค่าเริ่มต้นเป็นชื่อหัวหน้าหลักสูตร
  *   (ทำฝั่งเบราว์เซอร์ก่อนสั่งพิมพ์ — ดู public/assets/js/print-sign.js)
  */
 $me = current_user();
@@ -193,7 +193,7 @@ audit('print.form', ['student_id' => $sid, 'semester_id' => $semesterId]);
         </div>
         <div class="head-sign">
             <div>ลงชื่อ <span class="fill w-sign slot" data-slot="sign"></span></div>
-            <div class="paren">( <span class="fill w-headname"><?= e($headName) ?></span> )</div>
+            <div class="paren">( <span class="fill w-headname slot" data-slot="paren"><?= e($headName) ?></span> )</div>
             <div>หัวหน้าหลักสูตร<span class="fill w-headpos slot" data-slot="pos"></span></div>
         </div>
     </div>
@@ -205,8 +205,8 @@ audit('print.form', ['student_id' => $sid, 'semester_id' => $semesterId]);
 <dialog class="sign-dialog" id="signDialog">
     <form method="dialog">
         <h2><i class="bi bi-pen"></i> ลงชื่อหัวหน้าหลักสูตร</h2>
-        <p class="hint">สาขา<?= e($st['major']) ?> · ในวงเล็บแสดงชื่อ <b><?= e($headName) ?></b> อัตโนมัติ</p>
-        <?php foreach (['sign' => 'บรรทัด "ลงชื่อ ....."', 'pos' => 'บรรทัด "หัวหน้าหลักสูตร ....."'] as $slot => $label): ?>
+        <p class="hint">สาขา<?= e($st['major']) ?> · หัวหน้าหลักสูตร <b><?= e($headName) ?></b></p>
+        <?php foreach (['sign' => 'บรรทัด "ลงชื่อ ....."', 'paren' => 'ในวงเล็บ ( ..... )', 'pos' => 'บรรทัด "หัวหน้าหลักสูตร ....."'] as $slot => $label): ?>
             <fieldset class="slot-editor" data-slot-editor="<?= $slot ?>">
                 <legend><?= $label ?></legend>
                 <div class="seg">
