@@ -5,6 +5,8 @@ use App\Services\ProgressService;
  * ติดตามขั้นตอนของนักศึกษา แยกตามปีที่เข้า (จากรหัสนักศึกษาหลักที่ 2-3)
  *  - ไม่ระบุปี: สรุปทุกปีที่เข้า + จำนวนนักศึกษาในแต่ละขั้นตอน
  *  - ?year=2566: รายชื่อนักศึกษาปีนั้น พร้อมขั้นตอน (กรองตามขั้นตอน/ค้นหาได้)
+ *  - ค้นหาจากหน้าแรก: ปีที่เข้า (66 / 2566) → ไปหน้าปีนั้น · รหัสนักศึกษาเต็ม (666415850004) → หน้าปี 66 เฉพาะคนนั้น
+ *    · อื่น ๆ (ชื่อ / รหัสบางส่วน) → แสดงผลค้นหาทุกปี
  */
 $year = (string) input('year', '');
 $stage = (string) input('stage', '');
@@ -13,7 +15,20 @@ $from = ProgressService::fromSql();
 $yearSql = ProgressService::entryYearSql();
 $stageSql = ProgressService::stageSql();
 
+if ($year === '' && $kw !== '') {
+    $k = trim($kw);
+    if (preg_match('/^(\d{2}|25\d{2})$/', $k)) {
+        redirect('/registrar/progress', ['year' => strlen($k) === 2 ? 2500 + (int) $k : (int) $k]);
+    }
+    if ($y = entry_year_from_code($k)) {
+        redirect('/registrar/progress', ['year' => $y, 'q' => ltrim($k, 'sS')]);
+    }
+}
+
 if ($year === '') {
+    $found = $kw !== '' ? q_all('SELECT ' . ProgressService::columns() . " $from
+        WHERE st.status = 'studying' AND (st.student_code LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ?)
+        ORDER BY st.student_code LIMIT 100", [like(ltrim(trim($kw), 'sS')), like($kw), like($kw), like($kw)]) : null;
     $rows = q_all("SELECT $yearSql AS y, $stageSql AS stage, COUNT(*) AS n $from WHERE st.status = 'studying' GROUP BY y, stage");
     $years = [];
     foreach ($rows as $r) {
@@ -44,6 +59,34 @@ $yearLabel = fn(string $y) => $y === 'none' ? 'ไม่ทราบปีที
 layout_start('ติดตามขั้นตอนนักศึกษา');
 if ($year === ''): ?>
     <?php page_header('ติดตามขั้นตอนนักศึกษา', 'แยกตามปีที่เข้า (จากรหัสนักศึกษาหลักที่ 2-3 เช่น 666415850004 → เข้าปี 2566) · เฉพาะนักศึกษาที่กำลังศึกษา'); ?>
+    <form class="row g-2 mb-3" method="get">
+        <div class="col-md-6"><input type="search" name="q" class="form-control" value="<?= e($kw) ?>" autofocus
+            placeholder="ค้นหาปีที่เข้า (66 หรือ 2566) / รหัสนักศึกษา / ชื่อ"></div>
+        <div class="col-md-2"><button class="btn btn-primary w-100"><i class="bi bi-search me-1"></i>ค้นหา</button></div>
+        <?php if ($kw !== ''): ?><div class="col-md-2"><a href="/registrar/progress" class="btn btn-light w-100">ล้าง</a></div><?php endif; ?>
+    </form>
+    <?php if ($found !== null): ?>
+        <div class="card mb-4">
+            <div class="card-header bg-white fw-semibold">ผลการค้นหา "<?= e($kw) ?>" <span class="badge text-bg-light border"><?= count($found) ?></span></div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light"><tr><th>รหัส</th><th>ชื่อ-สกุล</th><th>ปีที่เข้า</th><th>ชั่วโมง</th><th>ขั้นตอน</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($found as $s): ?>
+                        <tr>
+                            <td><code><?= e($s['student_code']) ?></code></td>
+                            <td><a href="/students/view?id=<?= $s['id'] ?>"><?= e(full_name($s)) ?></a></td>
+                            <td><?php if ($s['entry_year_calc']): ?><a href="?year=<?= (int) $s['entry_year_calc'] ?>">ปี <?= substr((string) $s['entry_year_calc'], 2) ?></a><?php else: ?>-<?php endif; ?></td>
+                            <td class="small"><?= fmt_hours($s['earned']) ?> / <?= fmt_hours($s['required']) ?> ชม.</td>
+                            <td><?php stage_badge($s['stage']); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (!$found): ?><tr><td colspan="5" class="text-center text-muted py-4">ไม่พบนักศึกษา</td></tr><?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    <?php endif; ?>
     <div class="d-flex flex-wrap gap-3 small mb-3">
         <?php foreach (ProgressService::STAGES as $k => [$label, $color, $icon]): ?>
             <span><span class="badge text-bg-<?= $color ?>"><i class="bi bi-<?= $icon ?>"></i></span> <?= $label ?></span>
