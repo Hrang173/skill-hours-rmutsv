@@ -3,7 +3,7 @@ use App\Services\ActivityService;
 
 $me = current_user();
 $id = input_int('id');
-$act = $id ? ActivityService::find($id) : null;
+$act = $orig = $id ? ActivityService::find($id) : null;
 if ($id && (!$act || (int) $act['teacher_id'] !== (int) $me['id'])) {
     flash('danger', 'ไม่พบกิจกรรม หรือคุณไม่ใช่เจ้าของกิจกรรมนี้');
     redirect('/teacher/activities');
@@ -13,7 +13,6 @@ $errors = [];
 
 if (is_post()) {
     $data = [
-        'skill_id'          => input_int('skill_id'),
         'semester_id'       => input_int('semester_id') ?: null,
         'title'             => mb_substr((string) input('title', ''), 0, 255),
         'description'       => (string) input('description', ''),
@@ -27,7 +26,15 @@ if (is_post()) {
     $sessions = ActivityService::sessionsFromRequest();
 
     if ($data['title'] === '') $errors[] = 'กรุณากรอกชื่อกิจกรรม';
-    if ($err = skill_year_error($data['skill_id'], $data['semester_id'])) $errors[] = $err;
+    // ทักษะ = ทักษะที่อาจารย์รับผิดชอบในปีของภาคที่เลือก (แก้กิจกรรมเดิมโดยไม่เปลี่ยนภาค → ใช้ทักษะเดิม)
+    $year = semester_year($data['semester_id']);
+    if ($orig && (int) $orig['semester_id'] === (int) $data['semester_id']) {
+        $data['skill_id'] = (int) $orig['skill_id'];
+    } elseif ($skill = teacher_skill((int) $me['id'], $year)) {
+        $data['skill_id'] = (int) $skill['id'];
+    } else {
+        $errors[] = no_skill_message($year);
+    }
     if ($data['hours'] <= 0 || $data['hours'] > 200) $errors[] = 'จำนวนชั่วโมงต้องอยู่ระหว่าง 0.5 – 200';
     foreach ($sessions as $s) {
         if ($s['start_time'] && $s['end_time'] && $s['end_time'] <= $s['start_time']) {
@@ -62,7 +69,11 @@ if (is_post()) {
 $semesters = all_semesters();
 $cur = current_semester();
 $v = fn(string $k, $d = '') => $act[$k] ?? $d;
-$skills = skills_for_form((int) $v('skill_id', 0));
+$skillNames = teacher_skill_names((int) $me['id']);
+if ($id) {
+    // กิจกรรมเดิม: แสดงทักษะเดิมไว้สำหรับปีของภาคเดิม
+    $skillNames[semester_year($orig['semester_id'] ? (int) $orig['semester_id'] : null)] = $orig['skill_name'];
+}
 
 layout_start($id ? 'แก้ไขกิจกรรม' : 'สร้างกิจกรรม');
 page_header($id ? 'แก้ไขกิจกรรม' : 'สร้างกิจกรรมใหม่', 'โพสต์กิจกรรมให้นักศึกษาขอเข้าร่วม หรือสร้างเป็นกิจกรรมมอบหมายเฉพาะคน');
@@ -87,15 +98,7 @@ page_header($id ? 'แก้ไขกิจกรรม' : 'สร้างก�
                 </select>
             </div>
             <div class="col-md-8">
-                <label class="form-label">ทักษะ <span class="text-danger">*</span></label>
-                <select name="skill_id" class="form-select" required data-skill-select data-current-year="<?= current_academic_year() ?>" data-me="<?= $me['id'] ?>">
-                    <option value="">-- เลือกทักษะ --</option>
-                    <?php foreach ($skills as $s): ?>
-                        <option value="<?= $s['id'] ?>" data-year="<?= $s['academic_year'] ?>" data-owner="<?= (int) $s['owner_id'] ?>" <?= (int) $v('skill_id', 0) === (int) $s['id'] ? 'selected' : '' ?>>
-                            <?= e($s['name']) ?> (<?= e($s['owner_name'] ?? '-') ?>)
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <?php skill_fixed_field($skillNames); ?>
             </div>
             <div class="col-md-4">
                 <label class="form-label">ภาคการศึกษา</label>

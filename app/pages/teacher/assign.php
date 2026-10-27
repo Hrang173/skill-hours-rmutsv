@@ -12,7 +12,6 @@ $preselected = [];
 if (is_post()) {
     $studentIds = array_map('intval', (array) ($_POST['student_ids'] ?? []));
     $data = [
-        'skill_id'    => input_int('skill_id'),
         'semester_id' => input_int('semester_id') ?: null,
         'title'       => mb_substr((string) input('title', ''), 0, 255),
         'description' => (string) input('description', ''),
@@ -23,7 +22,12 @@ if (is_post()) {
 
     if (!$studentIds) $errors[] = 'กรุณาเลือกนักศึกษาอย่างน้อย 1 คน';
     if ($data['title'] === '') $errors[] = 'กรุณากรอกชื่องาน/กิจกรรม';
-    if ($err = skill_year_error($data['skill_id'], $data['semester_id'])) $errors[] = $err;
+    $year = semester_year($data['semester_id']);
+    if ($skill = teacher_skill((int) $me['id'], $year)) {
+        $data['skill_id'] = (int) $skill['id'];
+    } else {
+        $errors[] = no_skill_message($year);
+    }
     if ($data['hours'] <= 0 || $data['hours'] > 200) $errors[] = 'จำนวนชั่วโมงต้องอยู่ระหว่าง 0.5 – 200';
 
     if (!$errors) {
@@ -55,7 +59,7 @@ if (is_post()) {
     $preselected = q_all('SELECT u.id, u.prefix, u.first_name, u.last_name, s.student_code FROM users u JOIN students s ON s.user_id = u.id WHERE u.id = ?', [$sid]);
 }
 
-$skills = skills_for_form();
+$skillNames = teacher_skill_names((int) $me['id']);
 $semesters = all_semesters();
 $cur = current_semester();
 
@@ -86,13 +90,7 @@ page_header('มอบหมายกิจกรรมรายบุคคล'
                     <input type="number" name="hours" class="form-control" step="0.5" min="0.5" max="200" required value="<?= e(old('hours')) ?>" data-hours-input>
                 </div>
                 <div class="col-md-8">
-                    <label class="form-label">ทักษะ <span class="text-danger">*</span></label>
-                    <select name="skill_id" class="form-select" required data-skill-select data-current-year="<?= current_academic_year() ?>" data-me="<?= $me['id'] ?>">
-                        <option value="">-- เลือกทักษะ --</option>
-                        <?php foreach ($skills as $s): ?>
-                            <option value="<?= $s['id'] ?>" data-year="<?= $s['academic_year'] ?>" data-owner="<?= (int) $s['owner_id'] ?>" <?= (int) old('skill_id') === (int) $s['id'] ? 'selected' : '' ?>><?= e($s['name']) ?> (<?= e($s['owner_name'] ?? '-') ?>)</option>
-                        <?php endforeach; ?>
-                    </select>
+                    <?php skill_fixed_field($skillNames); ?>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">ภาคการศึกษา</label>

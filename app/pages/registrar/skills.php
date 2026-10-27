@@ -1,6 +1,7 @@
 <?php
 /**
  * รายชื่อทักษะวิชาชีพ แยกตามปีการศึกษา — ฝ่ายทะเบียนเพิ่มทักษะและผู้รับผิดชอบใหม่ทุกปี
+ * อาจารย์ 1 ท่าน รับผิดชอบได้ 1 ทักษะต่อปี และโพสต์กิจกรรมได้เฉพาะทักษะของตัวเอง
  * (คัดลอกรายชื่อจากปีก่อนมาแก้ต่อได้)
  */
 $years = array_map('intval', array_column(q_all(
@@ -29,11 +30,14 @@ if (is_post()) {
         $withOwner = input('with_owner') === '1';
         $n = q(
             "INSERT INTO skills (academic_year, code, name, description, owner_id, max_hours, sort_order, is_active)
-             SELECT ?, f.code, f.name, f.description, IF(? AND u.is_active = 1 AND u.role = 'teacher', f.owner_id, NULL), f.max_hours, f.sort_order, 1
+             SELECT ?, f.code, f.name, f.description,
+                    IF(? AND u.is_active = 1 AND u.role = 'teacher'
+                         AND NOT EXISTS (SELECT 1 FROM skills o WHERE o.academic_year = ? AND o.owner_id = f.owner_id), f.owner_id, NULL),
+                    f.max_hours, f.sort_order, 1
                FROM skills f LEFT JOIN users u ON u.id = f.owner_id
               WHERE f.academic_year = ? AND f.is_active = 1
                 AND NOT EXISTS (SELECT 1 FROM skills t WHERE t.academic_year = ? AND t.code = f.code)",
-            [$year, $withOwner ? 1 : 0, $from, $year]
+            [$year, $withOwner ? 1 : 0, $year, $from, $year]
         )->rowCount();
         audit('skill.copy_year', ['from' => $from, 'to' => $year, 'count' => $n, 'with_owner' => $withOwner]);
         flash($n ? 'success' : 'info', $n ? "คัดลอก $n ทักษะจากปี $from แล้ว" . ($withOwner ? '' : ' — กรุณากำหนดผู้รับผิดชอบ') : 'ไม่มีทักษะใหม่ให้คัดลอก (ปีนี้มีครบแล้ว)');
@@ -50,6 +54,8 @@ if (is_post()) {
             flash('danger', 'กรุณากรอกรหัสและชื่อทักษะ');
         } elseif (q_val('SELECT 1 FROM skills WHERE academic_year = ? AND code = ? AND id <> ?', [$year, $d[0], $id])) {
             flash('danger', "รหัสทักษะ {$d[0]} มีอยู่แล้วในปีการศึกษา $year");
+        } elseif ($d[3] && ($taken = q_one('SELECT code, name FROM skills WHERE academic_year = ? AND owner_id = ? AND id <> ?', [$year, $d[3], $id]))) {
+            flash('danger', 'อาจารย์ท่านนี้รับผิดชอบทักษะ ' . $taken['code'] . ' ' . $taken['name'] . " ในปี $year อยู่แล้ว (1 ท่าน รับผิดชอบได้ 1 ทักษะ)");
         } elseif ($id) {
             q('UPDATE skills SET code=?, name=?, description=?, owner_id=?, sort_order=?, is_active=? WHERE id=?', [...$d, $id]);
             audit('skill.update', ['id' => $id]);
@@ -68,6 +74,7 @@ $skills = q_all("SELECT sk.*, CONCAT(u.prefix, u.first_name, ' ', u.last_name) A
                    FROM skills sk LEFT JOIN users u ON u.id = sk.owner_id
                   WHERE sk.academic_year = ? ORDER BY sk.sort_order, sk.id", [$year]);
 $teachers = q_all("SELECT id, prefix, first_name, last_name FROM users WHERE role = 'teacher' AND is_active = 1 ORDER BY first_name");
+$ownerOf = array_column($skills, 'code', 'owner_id'); // อาจารย์ → รหัสทักษะที่รับผิดชอบแล้วในปีนี้
 $edit = input_int('edit') ? q_one('SELECT * FROM skills WHERE id = ? AND academic_year = ?', [input_int('edit'), $year]) : null;
 // ปีที่คัดลอกมาได้ (ปีอื่นที่มีทักษะ) — ค่าเริ่มต้น = ปีก่อนหน้าที่ใกล้ที่สุด
 $copyYears = array_map('intval', array_column(q_all('SELECT DISTINCT academic_year FROM skills WHERE academic_year <> ? ORDER BY academic_year DESC', [$year]), 'academic_year'));
@@ -162,7 +169,8 @@ page_header('รายชื่อทักษะวิชาชีพ', 'ทั
                         <select name="owner_id" class="form-select">
                             <option value="">-</option>
                             <?php foreach ($teachers as $t): ?>
-                                <option value="<?= $t['id'] ?>" <?= (int) ($edit['owner_id'] ?? 0) === (int) $t['id'] ? 'selected' : '' ?>><?= e(full_name($t)) ?></option>
+                                <?php $taken = isset($ownerOf[$t['id']]) && (int) ($edit['owner_id'] ?? 0) !== (int) $t['id']; ?>
+                                <option value="<?= $t['id'] ?>" <?= (int) ($edit['owner_id'] ?? 0) === (int) $t['id'] ? 'selected' : '' ?> <?= $taken ? 'disabled' : '' ?>><?= e(full_name($t)) ?><?= $taken ? ' — รับผิดชอบ ' . e($ownerOf[$t['id']]) . ' แล้ว' : '' ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -176,7 +184,7 @@ page_header('รายชื่อทักษะวิชาชีพ', 'ทั
             </div>
         </form>
         <div class="alert alert-light border small mt-3">
-            <i class="bi bi-info-circle me-1"></i>อาจารย์จะเลือกได้เฉพาะทักษะของปีการศึกษาเดียวกับภาคการศึกษาของกิจกรรม ·
+            <i class="bi bi-info-circle me-1"></i>อาจารย์ 1 ท่าน รับผิดชอบได้ 1 ทักษะต่อปี · กิจกรรมที่อาจารย์โพสต์จะเป็นทักษะของตัวเองโดยอัตโนมัติ (เลือกทักษะของคนอื่นไม่ได้) ·
             ปีการศึกษาต้องมีภาคการศึกษาที่เมนู <a href="/registrar/semesters">ภาคการศึกษา</a> ด้วย
         </div>
     </div>

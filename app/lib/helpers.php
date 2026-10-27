@@ -349,30 +349,33 @@ function current_academic_year(): int
         ?? ((int) date('Y') + 543 - ((int) date('n') < 6 ? 1 : 0)));
 }
 
-/**
- * ทักษะที่เลือกได้ในฟอร์มกิจกรรม (ทุกปีที่มีภาคการศึกษา) — ฟอร์มกรองตามปีของภาคที่เลือกด้วย JS
- * $keepId = ทักษะเดิมของกิจกรรมที่กำลังแก้ (แสดงแม้ถูกปิดใช้งานแล้ว)
- */
-function skills_for_form(?int $keepId = null): array
+/** ปีการศึกษาของภาคที่เลือก (ไม่เลือกภาค = ปีปัจจุบัน) */
+function semester_year(?int $semesterId): int
 {
-    return q_all(
-        "SELECT sk.id, sk.name, sk.owner_id, sk.academic_year, CONCAT(u.prefix, u.first_name, ' ', u.last_name) AS owner_name
-           FROM skills sk LEFT JOIN users u ON u.id = sk.owner_id
-          WHERE sk.is_active = 1 OR sk.id = ?
-          ORDER BY sk.academic_year DESC, sk.sort_order, sk.id",
-        [$keepId ?? 0]
-    );
+    return (int) ($semesterId ? q_val('SELECT academic_year FROM semesters WHERE id = ?', [$semesterId]) : null) ?: current_academic_year();
 }
 
-/** ทักษะต้องเป็นของปีการศึกษาเดียวกับภาคที่เลือก (ไม่เลือกภาค = ปีปัจจุบัน) */
-function skill_year_error(int $skillId, ?int $semesterId): ?string
+/**
+ * ทักษะที่อาจารย์รับผิดชอบในปีการศึกษานั้น (อาจารย์ 1 ท่าน รับผิดชอบ 1 ทักษะต่อปี — ฝ่ายทะเบียนกำหนด)
+ * กิจกรรมของอาจารย์ใช้ทักษะนี้เสมอ โพสต์กิจกรรมในทักษะของคนอื่นไม่ได้
+ */
+function teacher_skill(int $teacherId, int $year): ?array
 {
-    $skillYear = q_val('SELECT academic_year FROM skills WHERE id = ?', [$skillId]);
-    if ($skillYear === null) {
-        return 'กรุณาเลือกทักษะ';
-    }
-    $year = $semesterId ? q_val('SELECT academic_year FROM semesters WHERE id = ?', [$semesterId]) : current_academic_year();
-    return (int) $skillYear === (int) $year ? null : 'ทักษะที่เลือกไม่ใช่ของปีการศึกษา ' . $year . ' กรุณาเลือกทักษะใหม่';
+    return q_one('SELECT * FROM skills WHERE owner_id = ? AND academic_year = ? AND is_active = 1 ORDER BY sort_order, id LIMIT 1', [$teacherId, $year]);
+}
+
+/** [ปี => ชื่อทักษะ] ของอาจารย์ทุกปี — ฟอร์มกิจกรรมใช้แสดงทักษะตามภาคที่เลือก */
+function teacher_skill_names(int $teacherId): array
+{
+    return array_column(q_all(
+        'SELECT academic_year, name FROM skills WHERE owner_id = ? AND is_active = 1 ORDER BY academic_year, sort_order DESC, id DESC',
+        [$teacherId]
+    ), 'name', 'academic_year');
+}
+
+function no_skill_message(int $year): string
+{
+    return "คุณยังไม่ได้รับมอบหมายให้รับผิดชอบทักษะในปีการศึกษา $year กรุณาติดต่อฝ่ายทะเบียน";
 }
 
 /* ------------------------------------------------------------ แจ้งเตือน & log */

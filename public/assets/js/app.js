@@ -176,22 +176,17 @@
         });
     }
 
-    // ---------- ฟอร์มกิจกรรม: แสดงเฉพาะทักษะของปีการศึกษาเดียวกับภาคที่เลือก ----------
-    document.querySelectorAll('[data-skill-select]').forEach(skill => {
-        const semester = skill.form?.querySelector('[data-semester-select]');
-        const options = [...skill.options].filter(o => o.value);
-        const filter = () => {
-            const year = semester?.selectedOptions[0]?.dataset.year || skill.dataset.currentYear;
-            options.forEach(o => { o.hidden = o.disabled = o.dataset.year !== year; });
-            if (skill.selectedOptions[0]?.disabled || !skill.value) {
-                // เลือกทักษะที่ตัวเองรับผิดชอบในปีนั้นให้อัตโนมัติ (ถ้ามี)
-                const mine = options.find(o => !o.disabled && o.dataset.owner === skill.dataset.me);
-                skill.value = mine ? mine.value : '';
-            }
-            const none = !options.some(o => !o.disabled);
-            skill.options[0].textContent = none ? `-- ยังไม่มีทักษะของปีการศึกษา ${year} (ติดต่อฝ่ายทะเบียน) --` : '-- เลือกทักษะ --';
+    // ---------- ฟอร์มกิจกรรม: แสดงทักษะที่อาจารย์รับผิดชอบในปีการศึกษาของภาคที่เลือก ----------
+    document.querySelectorAll('[data-skill-fixed]').forEach(box => {
+        const semester = box.closest('form')?.querySelector('[data-semester-select]');
+        const names = JSON.parse(box.dataset.skills || '{}');
+        const show = () => {
+            const year = semester?.selectedOptions[0]?.dataset.year || box.dataset.currentYear;
+            const name = names[year];
+            box.textContent = name || `คุณยังไม่ได้รับมอบหมายให้รับผิดชอบทักษะในปีการศึกษา ${year} กรุณาติดต่อฝ่ายทะเบียน`;
+            box.classList.toggle('text-danger', !name);
         };
-        semester?.addEventListener('change', filter);
-        filter();
+        semester?.addEventListener('change', show);
+        show();
     });
 })();

@@ -184,3 +184,18 @@ function student_picker(array $preselected = []): void
     </div>
     <?php
 }
+
+/**
+ * ช่อง "ทักษะ" ในฟอร์มกิจกรรมของอาจารย์ — ไม่ให้เลือก: แสดงทักษะที่อาจารย์รับผิดชอบในปีของภาคที่เลือก
+ * (เซิร์ฟเวอร์กำหนดทักษะเองตอนบันทึก) — JS ใน app.js เปลี่ยนชื่อตามภาค
+ * @param array $names [ปีการศึกษา => ชื่อทักษะ]
+ */
+function skill_fixed_field(array $names): void
+{
+    ?>
+    <label class="form-label">ทักษะที่คุณรับผิดชอบ</label>
+    <div class="form-control bg-light" data-skill-fixed data-current-year="<?= current_academic_year() ?>"
+         data-skills="<?= e(json_encode($names, JSON_UNESCAPED_UNICODE)) ?>"><?= e($names[current_academic_year()] ?? '-') ?></div>
+    <div class="form-text">ฝ่ายทะเบียนเป็นผู้กำหนดทักษะให้อาจารย์ (1 ท่าน รับผิดชอบ 1 ทักษะต่อปีการศึกษา)</div>
+    <?php
+}
