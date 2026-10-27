@@ -66,6 +66,13 @@ final class ActivityService
         return $rows;
     }
 
+    /** วันเวลาเริ่มฝึกครั้งแรก 'Y-m-d H:i' (วันที่ไม่ระบุเวลาเริ่ม = 00:00) หรือ null ถ้ายังไม่มีวันฝึก */
+    public static function firstStart(array $sessions): ?string
+    {
+        $starts = array_map(fn($s) => $s['session_date'] . ' ' . substr($s['start_time'] ?? '00:00', 0, 5), $sessions);
+        return $starts ? min($starts) : null;
+    }
+
     public static function saveSessions(int $activityId, array $sessions): void
     {
         q('DELETE FROM activity_sessions WHERE activity_id = ?', [$activityId]);

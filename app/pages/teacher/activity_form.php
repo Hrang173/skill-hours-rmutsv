@@ -36,6 +36,11 @@ if (is_post()) {
         $errors[] = no_skill_message($year);
     }
     if ($data['hours'] <= 0 || $data['hours'] > 200) $errors[] = 'จำนวนชั่วโมงต้องอยู่ระหว่าง 0.5 – 200';
+    // ปิดรับสมัครต้องไม่เกินวันเวลาเริ่มฝึกครั้งแรก
+    $firstStart = ActivityService::firstStart($sessions);
+    if ($data['register_deadline'] && $firstStart && substr($data['register_deadline'], 0, 16) > $firstStart) {
+        $errors[] = 'วันปิดรับสมัครต้องอยู่ก่อนวันเวลาเริ่มฝึก (' . thai_date($firstStart, true) . ')';
+    }
     foreach ($sessions as $s) {
         if ($s['start_time'] && $s['end_time'] && $s['end_time'] <= $s['start_time']) {
             $errors[] = 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม (' . thai_date($s['session_date']) . ')';
@@ -119,7 +124,7 @@ page_header($id ? 'แก้ไขกิจกรรม' : 'สร้างก�
             </div>
             <div class="col-md-3">
                 <label class="form-label">ปิดรับสมัคร</label>
-                <input type="datetime-local" name="register_deadline" class="form-control" value="<?= e($v('register_deadline') ? date('Y-m-d\TH:i', strtotime($v('register_deadline'))) : '') ?>">
+                <input type="datetime-local" name="register_deadline" class="form-control" data-register-deadline value="<?= e($v('register_deadline') ? date('Y-m-d\TH:i', strtotime($v('register_deadline'))) : '') ?>">
             </div>
             <?php if ($id): ?>
                 <div class="col-md-3">

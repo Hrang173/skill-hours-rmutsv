@@ -31,6 +31,32 @@
         const body = editor.querySelector('[data-sessions-body]');
         const info = editor.querySelector('[data-sessions-hours]');
         const hoursInput = document.querySelector('[data-hours-input]');
+        const deadline = document.querySelector('[data-register-deadline]');
+        let deadlineHint = null;
+        if (deadline) {
+            deadlineHint = document.createElement('div');
+            deadlineHint.className = 'form-text';
+            deadline.after(deadlineHint);
+            deadline.addEventListener('change', () => checkDeadline());
+        }
+
+        /** ปิดรับสมัครต้องไม่เกินวันเวลาเริ่มฝึกครั้งแรก (ตรวจซ้ำฝั่งเซิร์ฟเวอร์) */
+        const checkDeadline = () => {
+            if (!deadline) return;
+            const starts = [...body.querySelectorAll('tr')]
+                .map(tr => [tr.querySelector('[name="sessions[date][]"]').value, tr.querySelector('[name="sessions[start][]"]').value || '00:00'])
+                .filter(([d]) => d)
+                .map(([d, t]) => `${d}T${t.slice(0, 5)}`)
+                .sort();
+            const first = starts[0] || '';
+            deadline.max = first;
+            const late = first && deadline.value && deadline.value > first;
+            deadline.setCustomValidity(late ? 'วันปิดรับสมัครต้องอยู่ก่อนวันเวลาเริ่มฝึก' : '');
+            deadline.classList.toggle('is-invalid', !!late);
+            const label = first ? new Date(first).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+            deadlineHint.textContent = late ? `ต้องปิดรับก่อนเริ่มฝึก (${label})` : (first ? `ไม่เกิน ${label} (เริ่มฝึกวันแรก)` : '');
+            deadlineHint.classList.toggle('text-danger', !!late);
+        };
 
         const calc = () => {
             let minutes = 0;
@@ -54,6 +80,7 @@
                     hoursInput.dataset.auto = '1';
                 }
             }
+            checkDeadline();
         };
         hoursInput?.addEventListener('input', () => { delete hoursInput.dataset.auto; });
 
