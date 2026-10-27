@@ -49,7 +49,7 @@ page_header('กิจกรรมของฉัน', 'ทั้งหมด ' 
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
-                <tr><th>กิจกรรม</th><th>ทักษะ</th><th>ภาค</th><th class="text-end">ชม.</th><th class="text-center">ผู้เข้าร่วม</th><th class="text-center">รออนุมัติ</th><th>สถานะ</th></tr>
+                <tr><th>กิจกรรม</th><th>ทักษะ</th><th>ภาค</th><th class="text-end">ชม.</th><th class="text-center">ผู้เข้าร่วม</th><th class="text-center">รออนุมัติ</th><th>สถานะ</th><th></th></tr>
             </thead>
             <tbody>
             <?php foreach ($rows as $a): ?>
@@ -65,9 +65,12 @@ page_header('กิจกรรมของฉัน', 'ทั้งหมด ' 
                     <td class="text-center"><?= $a['joined_count'] ?><?= $a['capacity'] !== null ? '/' . $a['capacity'] : '' ?></td>
                     <td class="text-center"><?= $a['pending_count'] ? '<span class="badge text-bg-warning">' . $a['pending_count'] . '</span>' : '-' ?></td>
                     <td><?= activity_status_badge($a['status']) ?></td>
+                    <td class="text-end text-nowrap">
+                        <a href="/teacher/activity/edit?id=<?= $a['id'] ?>" class="btn btn-sm btn-light" title="แก้ไขกิจกรรม"><i class="bi bi-pencil"></i></a>
+                    </td>
                 </tr>
             <?php endforeach; ?>
-            <?php if (!$rows): ?><tr><td colspan="7" class="text-center text-muted py-4">ไม่พบกิจกรรม</td></tr><?php endif; ?>
+            <?php if (!$rows): ?><tr><td colspan="8" class="text-center text-muted py-4">ไม่พบกิจกรรม</td></tr><?php endif; ?>
             </tbody>
         </table>
     </div>
