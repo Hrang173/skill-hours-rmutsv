@@ -44,7 +44,7 @@ page_header('ตั้งค่าระบบ', 'เกณฑ์ชั่วโ
             </div>
         <?php endforeach; ?>
         <div class="alert alert-light border small mb-0">
-            หัวหน้าหลักสูตร (ท้ายแบบบันทึก) กำหนดได้ที่เมนู <a href="/registrar/program-heads">หัวหน้าหลักสูตร</a><br>
+            หัวหน้าหลักสูตร (ท้ายแบบบันทึก) กำหนดได้ที่เมนู <a href="/registrar/staff-positions">ตำแหน่งบุคลากร</a> (ของสาขาที่เลือกดูอยู่)<br>
             ค่าการเชื่อมต่อฐานข้อมูลและ API มหาวิทยาลัย ตั้งในไฟล์ <code>.env</code> / <code>docker-compose.yml</code>
         </div>
     </div>

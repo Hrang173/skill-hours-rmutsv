@@ -49,7 +49,6 @@ function office_nav(string $home): array
         ['/registrar/skills',        'list-check',   'รายชื่อทักษะ'],
         ['/registrar/semesters',     'calendar3',    'ภาคการศึกษา'],
         ['/registrar/staff-positions', 'person-badge', 'ตำแหน่งบุคลากร'],
-        ['/registrar/program-heads', 'award',        'หัวหน้าหลักสูตร'],
         ['/signature',               'pen',          'ลายเซ็นของฉัน'],
     ];
 }

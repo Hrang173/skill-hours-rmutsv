@@ -65,7 +65,9 @@ $majors = q_all(
     "SELECT m.*,
             (SELECT COUNT(*) FROM students s WHERE s.major_id = m.id AND s.status = 'studying') AS students,
             (SELECT COUNT(*) FROM users u WHERE u.major_id = m.id AND u.role = 'teacher' AND u.is_active = 1) AS teachers,
-            (SELECT COUNT(*) FROM skills k WHERE k.major_id = m.id AND k.academic_year = ?) AS skills
+            (SELECT COUNT(*) FROM skills k WHERE k.major_id = m.id AND k.academic_year = ?) AS skills,
+            (SELECT CONCAT(h.prefix, h.first_name, ' ', h.last_name) FROM users h
+              WHERE h.head_of_major = m.name AND h.role = 'teacher' AND h.is_active = 1 LIMIT 1) AS head_name
        FROM majors m ORDER BY m.is_active DESC, m.sort_order, m.id",
     [current_academic_year()]
 );
@@ -90,6 +92,8 @@ page_header('เลือกสาขาวิชา', 'เลือกสาข
                         <h5 class="mb-1"><i class="bi bi-mortarboard me-1 text-primary"></i><?= e($m['name']) ?></h5>
                         <a href="?edit=<?= $m['id'] ?>#form" class="btn btn-sm btn-light" title="แก้ไขสาขา"><i class="bi bi-pencil"></i></a>
                     </div>
+                    <div class="small mb-1"><i class="bi bi-award me-1"></i>หัวหน้าหลักสูตร:
+                        <?= $m['head_name'] ? '<b>' . e($m['head_name']) . '</b>' : '<span class="text-danger">ยังไม่กำหนด</span>' ?></div>
                     <div class="small text-muted mb-3">
                         นักศึกษา <?= $m['students'] ?> คน · อาจารย์ <?= $m['teachers'] ?> ท่าน · ทักษะปี <?= current_academic_year() ?> <?= $m['skills'] ?> ทักษะ<br>
                         เกณฑ์ 4 ปี <?= fmt_hours($m['required_4year'] ?? $def['4year']) ?> / เทียบโอน <?= fmt_hours($m['required_transfer'] ?? $def['transfer']) ?> ชม.

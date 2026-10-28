@@ -96,7 +96,12 @@ page_header('ตำแหน่งบุคลากร', 'สาขา' . $offi
                     <td><code><?= e($s['username']) ?></code><?= $s['auth_source'] === 'university' ? ' <span class="badge text-bg-light border">e-Passport</span>' : '' ?></td>
                     <td>
                         <span class="badge text-bg-<?= $badge[$pos] ?>"><?= POSITIONS[$pos] ?></span>
-                        <?php if ($pos === 'head'): ?><div class="small text-muted"><?= e($s['head_of_major']) ?></div><?php endif; ?>
+                        <?php if ($pos === 'head'): ?>
+                            <div class="small text-muted"><?= e($s['head_of_major']) ?></div>
+                            <div class="small"><?= $s['signature_data']
+                                ? '<span class="text-success"><i class="bi bi-check-circle me-1"></i>บันทึกลายเซ็นแล้ว</span>'
+                                : '<span class="text-warning-emphasis"><i class="bi bi-exclamation-circle me-1"></i>ยังไม่มีลายเซ็นที่บันทึกไว้</span>' ?></div>
+                        <?php endif; ?>
                     </td>
                     <td>
                         <?php if ((int) $s['id'] === user_id()): ?>

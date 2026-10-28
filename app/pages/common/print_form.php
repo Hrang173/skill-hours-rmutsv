@@ -28,7 +28,7 @@ $semesterId = input_int('semester') ?: null;
 $skillType = (string) input('type', '');           // '1' | '2' | ''
 $showSummary = input('summary', '1') === '1';
 
-// หัวหน้าหลักสูตรของสาขานักศึกษา (ฝ่ายทะเบียนกำหนดที่เมนู "ตำแหน่งบุคลากร" / "หัวหน้าหลักสูตร")
+// หัวหน้าหลักสูตรของสาขานักศึกษา (ฝ่ายทะเบียนกำหนดที่เมนู "ตำแหน่งบุคลากร")
 $head = q_one("SELECT id, prefix, first_name, last_name FROM users WHERE role = 'teacher' AND is_active = 1 AND head_of_major = ? LIMIT 1", [$st['major']]);
 $headName = $head ? full_name($head) : '';
 // ลงชื่อท้ายเอกสารได้เฉพาะหัวหน้าหลักสูตรของสาขานี้

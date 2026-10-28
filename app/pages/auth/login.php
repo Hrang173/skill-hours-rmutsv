@@ -87,7 +87,7 @@ layout_start('เข้าสู่ระบบ');
                         <tr><td>ผู้ดูแลระบบ</td><td><code>admin</code></td></tr>
                         <tr><td>ฝ่ายทะเบียน</td><td><code>registrar</code></td></tr>
                         <?php
-                        // หัวหน้าหลักสูตรดึงจากฐานข้อมูล (ตามที่ตั้งในเมนู "หัวหน้าหลักสูตร")
+                        // หัวหน้าหลักสูตรดึงจากฐานข้อมูล (ตามที่ตั้งในเมนู "ตำแหน่งบุคลากร")
                         $heads = array_column(q_all("SELECT username FROM users WHERE role = 'teacher' AND is_active = 1 AND head_of_major IS NOT NULL ORDER BY username"), 'username');
                         $demoTeachers = array_values(array_unique(array_merge(['naret', 'sayamon'], $heads)));
                         ?>
