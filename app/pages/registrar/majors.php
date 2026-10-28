@@ -44,6 +44,19 @@ if (is_post()) {
             audit('major.create', ['name' => $d[0]]);
             flash('success', 'เพิ่มสาขา "' . $d[0] . '" แล้ว');
         }
+        // นักศึกษาที่ยังไม่ระบุสาขา แต่ชื่อสาขาที่ API ส่งมาตรงกับชื่อที่เพิ่งตั้ง → จับคู่ให้ทันที (ไม่ต้องรอเข้าระบบใหม่)
+        $matched = 0;
+        foreach (q_all('SELECT user_id, major FROM students WHERE major_id IS NULL') as $s) {
+            if ($mid = major_from_api($s['major'])) {
+                set_student_major((int) $s['user_id'], $mid);
+                notify((int) $s['user_id'], 'ฝ่ายทะเบียนกำหนดสาขาให้คุณแล้ว', 'สาขา' . q_val('SELECT name FROM majors WHERE id = ?', [$mid]), '/');
+                $matched++;
+            }
+        }
+        if ($matched) {
+            audit('major.rematch', ['count' => $matched]);
+            flash('info', "จับคู่นักศึกษาที่ยังไม่ระบุสาขาได้ $matched คน ตามชื่อสาขาที่ API ส่งมา");
+        }
     }
     redirect('/registrar/majors');
 }
