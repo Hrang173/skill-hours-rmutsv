@@ -100,7 +100,8 @@ function check(string $name, bool $ok, string $detail = ''): void
 {
     global $results, $section;
     $results[] = [$section, $name, $ok, $detail];
-    echo ($ok ? '  ✅ ' : '  ❌ ') . $name . ($ok || $detail === '' ? '' : "  → $detail") . "\n";
+    // [ลำดับ] เป็นตัวเลข ASCII — ใช้อ้างอิงข้อที่ไม่ผ่านจากหน้าจอที่แสดงภาษาไทยไม่ได้
+    echo ($ok ? '  ✅ ' : '  ❌ ') . '[' . count($results) . '] ' . $name . ($ok || $detail === '' ? '' : "  → $detail") . "\n";
 }
 function login(string $username, string $password = PW): Browser
 {
@@ -128,7 +129,7 @@ function cleanup(): void
     q("DELETE FROM participations WHERE student_id IN ($in)");
     q("DELETE FROM student_certifications WHERE student_id IN ($in)");
     q("DELETE FROM notifications WHERE user_id IN ($in)");
-    q("DELETE FROM audit_logs WHERE user_id IN ($in)");
+    q("DELETE FROM audit_logs WHERE user_id IN ($in) OR detail LIKE '%e2e.%' OR detail LIKE '%E2E%'");
     q("DELETE FROM skills WHERE major_id IN (SELECT id FROM majors WHERE name LIKE 'E2E %') OR code LIKE 'E2E%'");
     q("DELETE FROM users WHERE id IN ($in)");
     q("DELETE FROM majors WHERE name LIKE 'E2E %'");
@@ -357,5 +358,7 @@ try {
 $pass = count(array_filter($results, fn($r) => $r[2]));
 $fail = count($results) - $pass;
 echo "\n---\nผ่าน $pass / " . count($results) . ($fail ? " · ไม่ผ่าน $fail" : ' ✅ ทั้งหมด') . "\n";
+$failedNo = array_keys(array_filter(array_combine(range(1, count($results)), $results), fn($r) => !$r[2]));
+echo 'E2E RESULT: PASS ' . $pass . ' / ' . count($results) . ($fail ? ' FAIL ' . implode(',', $failedNo) : ' ALL OK') . "\n";
 echo "ข้อมูลทดสอบถูกลบแล้ว (เหลือ " . q_val("SELECT COUNT(*) FROM users WHERE username LIKE 'e2e.%'") . " บัญชี e2e)\n";
 exit($fail ? 1 : 0);
