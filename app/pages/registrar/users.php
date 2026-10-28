@@ -19,8 +19,10 @@ if (is_post()) {
     redirect_back('/registrar/users');
 }
 
-$where = ["u.role IN ($rolesIn)"];
-$params = [];
+$major = require_office_major();
+// นักศึกษา/อาจารย์: เฉพาะสาขาที่เลือก · ฝ่ายทะเบียน/admin: แสดงทุกสาขา
+$where = ["u.role IN ($rolesIn)", "(u.role NOT IN ('student', 'teacher') OR COALESCE(s.major_id, u.major_id) = ?)"];
+$params = [(int) $major['id']];
 if (in_array($role, $roles, true)) {
     $where[] = 'u.role = ?';
     $params[] = $role;
@@ -34,7 +36,7 @@ $pg = paginate((int) q_val("SELECT COUNT(*) $from", $params), 30);
 $rows = q_all("SELECT u.*, s.student_code, s.program_type $from ORDER BY u.role, u.username LIMIT {$pg['per_page']} OFFSET {$pg['offset']}", $params);
 
 layout_start('จัดการผู้ใช้');
-page_header('จัดการผู้ใช้', implode(' · ', array_map('role_label', $roles)),
+page_header('จัดการผู้ใช้', 'สาขา' . $major['name'] . ' · ' . implode(' · ', array_map('role_label', $roles)),
     '<div class="dropdown"><button class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-person-plus me-1"></i>เพิ่มผู้ใช้</button>
      <ul class="dropdown-menu dropdown-menu-end">'
     . implode('', array_map(fn($r) => '<li><a class="dropdown-item" href="/registrar/user/edit?role=' . $r . '">' . role_label($r) . '</a></li>', $roles))

@@ -11,14 +11,16 @@ namespace App\Services;
  *  - นับเฉพาะรายการที่อาจารย์บันทึกผล "ผ่าน" แล้ว
  *  - นักศึกษา 1 คน เก็บชั่วโมงจากอาจารย์ 1 ท่าน (ผู้ควบคุมกิจกรรม) นับได้สูงสุด 25 ชม.
  *    (ตั้งค่า max_hours_per_teacher / enforce_teacher_cap) ส่วนเกินยังแสดงในประวัติแต่ไม่นับรวม
+ *  - ชั่วโมงที่ต้องเก็บ / เพดานต่ออาจารย์ แก้แยกรายสาขาได้ (majors.required_4year, required_transfer, teacher_cap — ว่าง = ค่ากลาง)
  */
 final class HoursService
 {
-    public static function requiredHours(?string $programType): float
+    public static function requiredHours(?string $programType, ?int $majorId = null): float
     {
+        $m = major($majorId);
         return $programType === 'transfer'
-            ? (float) setting('required_hours_transfer', 50)
-            : (float) setting('required_hours_4year', 100);
+            ? (float) ($m['required_transfer'] ?? setting('required_hours_transfer', 50))
+            : (float) ($m['required_4year'] ?? setting('required_hours_4year', 100));
     }
 
     public static function capEnabled(): bool
@@ -26,10 +28,13 @@ final class HoursService
         return setting('enforce_teacher_cap', '1') === '1';
     }
 
-    /** ชั่วโมงสูงสุดที่นับได้จากอาจารย์ 1 ท่าน (null = ไม่จำกัด) */
-    public static function teacherCap(): ?float
+    /** ชั่วโมงสูงสุดที่นับได้จากอาจารย์ 1 ท่าน (null = ไม่จำกัด) — ตามสาขา ถ้าสาขากำหนดไว้ */
+    public static function teacherCap(?int $majorId = null): ?float
     {
-        return self::capEnabled() ? (float) setting('max_hours_per_teacher', 25) : null;
+        if (!self::capEnabled()) {
+            return null;
+        }
+        return (float) (major($majorId)['teacher_cap'] ?? setting('max_hours_per_teacher', 25));
     }
 
     /**
@@ -38,13 +43,16 @@ final class HoursService
     public static function earnedSql(): string
     {
         $cap = self::teacherCap();
-        $expr = $cap !== null ? "LEAST(x.h, $cap)" : 'x.h';
+        // เพดานตามสาขาของนักศึกษา (ว่าง = ค่ากลาง)
+        $expr = $cap !== null ? "LEAST(x.h, COALESCE(xm.teacher_cap, $cap))" : 'x.h';
         return "SELECT x.student_id, SUM($expr) AS earned
                   FROM (SELECT p.student_id, a.teacher_id, SUM(p.hours_awarded) AS h
                           FROM participations p
                           JOIN activities a ON a.id = p.activity_id
                          WHERE p.status = 'completed' AND p.result = 'pass'
                          GROUP BY p.student_id, a.teacher_id) x
+                  LEFT JOIN students xs ON xs.user_id = x.student_id
+                  LEFT JOIN majors xm ON xm.id = xs.major_id
                  GROUP BY x.student_id";
     }
 
@@ -53,7 +61,9 @@ final class HoursService
     {
         $t = (float) setting('required_hours_transfer', 50);
         $f = (float) setting('required_hours_4year', 100);
-        return "(CASE WHEN $alias.program_type = 'transfer' THEN $t ELSE $f END)";
+        return "(CASE WHEN $alias.program_type = 'transfer'
+                      THEN COALESCE((SELECT rm.required_transfer FROM majors rm WHERE rm.id = $alias.major_id), $t)
+                      ELSE COALESCE((SELECT rm.required_4year FROM majors rm WHERE rm.id = $alias.major_id), $f) END)";
     }
 
     /**
@@ -81,8 +91,9 @@ final class HoursService
      */
     public static function summary(int $studentId, ?string $programType): array
     {
-        $required = self::requiredHours($programType);
-        $cap = self::teacherCap();
+        $majorId = (int) q_val('SELECT major_id FROM students WHERE user_id = ?', [$studentId]) ?: null;
+        $required = self::requiredHours($programType, $majorId);
+        $cap = self::teacherCap($majorId);
 
         // แยกตามทักษะ (แสดงข้อมูล ไม่มีเพดาน) — ทักษะของปีการศึกษาปัจจุบัน + ทักษะปีอื่นที่นักศึกษาเคยฝึก
         $skills = q_all(

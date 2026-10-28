@@ -11,7 +11,7 @@ final class ActivityService
     public static function find(int $id): ?array
     {
         return q_one(
-            "SELECT a.*, sk.name AS skill_name, sk.code AS skill_code,
+            "SELECT a.*, sk.name AS skill_name, sk.code AS skill_code, sk.major_id AS skill_major_id,
                     CONCAT(t.prefix, t.first_name, ' ', t.last_name) AS teacher_name,
                     sem.term, sem.academic_year,
                     (SELECT COUNT(*) FROM participations p WHERE p.activity_id = a.id AND p.status IN ('approved','completed')) AS joined_count,
@@ -92,7 +92,8 @@ final class ActivityService
     {
         $added = 0;
         foreach (array_unique(array_map('intval', $studentIds)) as $sid) {
-            if (!q_val("SELECT 1 FROM students WHERE user_id = ?", [$sid])) {
+            // มอบหมายได้เฉพาะนักศึกษาสาขาเดียวกับทักษะของกิจกรรม
+            if (!q_val('SELECT 1 FROM students WHERE user_id = ? AND major_id = (SELECT major_id FROM skills WHERE id = ?)', [$sid, $activity['skill_id']])) {
                 continue;
             }
             $exists = q_one('SELECT id, status FROM participations WHERE activity_id = ? AND student_id = ?', [$activity['id'], $sid]);
@@ -127,7 +128,7 @@ final class ActivityService
      */
     public static function capWarning(int $teacherId, array $studentIds, bool $exceedOnly = false): ?string
     {
-        $cap = HoursService::teacherCap();
+        $cap = HoursService::teacherCap((int) q_val('SELECT major_id FROM users WHERE id = ?', [$teacherId]) ?: null);
         if ($cap === null || !$studentIds) {
             return null;
         }

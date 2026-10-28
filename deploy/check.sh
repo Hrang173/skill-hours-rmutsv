@@ -30,7 +30,8 @@ curl -s -o /dev/null -w "   หน้าเข้าสู่ระบบ HTTP %
 echo "== migration + แผนการเรียน"
 $DOCKER compose exec -T db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" skillhours -e "
     SELECT version FROM schema_migrations ORDER BY version;
-    SELECT program_type, COUNT(*) AS students FROM students GROUP BY program_type;"'
+    SELECT program_type, COUNT(*) AS students FROM students GROUP BY program_type;
+    SELECT COALESCE(m.name, CONCAT(CHAR(40), 0x2D, CHAR(41))) AS major, COUNT(s.user_id) AS students FROM students s LEFT JOIN majors m ON m.id = s.major_id GROUP BY m.name;"'
 
 echo "== กติการหัสนักศึกษา (หลักที่ 4: 4 = 4 ปี, 2 = เทียบโอน)"
 $DOCKER compose exec -T web php -r '

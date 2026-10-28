@@ -20,6 +20,8 @@ final class UniversitySync
             return null;
         }
         $role = $p['role'] === 'student' ? 'student' : 'teacher';
+        // สาขาจากชื่อสาขาที่ API ส่งมา (ไม่ตรงสาขาไหน = ยังไม่ระบุสาขา รอฝ่ายทะเบียนกำหนด)
+        $majorId = major_from_api($p['major'] ?? null, $p['department'] ?? null);
         $user = q_one('SELECT * FROM users WHERE username = ?', [$p['username']]);
 
         if ($user) {
@@ -30,9 +32,10 @@ final class UniversitySync
             $id = (int) $user['id'];
         } else {
             q(
-                "INSERT INTO users (username, password_hash, role, prefix, first_name, last_name, email, auth_source, external_id)
-                 VALUES (?, NULL, ?, ?, ?, ?, ?, 'university', ?)",
-                [$p['username'], $role, $p['prefix'] ?? '', $p['first_name'], $p['last_name'] ?? '', $p['email'] ?? null, $p['external_id'] ?? null]
+                "INSERT INTO users (username, password_hash, role, prefix, first_name, last_name, email, auth_source, external_id, major_id)
+                 VALUES (?, NULL, ?, ?, ?, ?, ?, 'university', ?, ?)",
+                [$p['username'], $role, $p['prefix'] ?? '', $p['first_name'], $p['last_name'] ?? '', $p['email'] ?? null, $p['external_id'] ?? null,
+                 $role === 'teacher' ? $majorId : null]
             );
             $id = (int) db()->lastInsertId();
             audit('university.provision', ['username' => $p['username'], 'role' => $role]);
@@ -40,12 +43,13 @@ final class UniversitySync
 
         if ($role === 'student' && !empty($p['student_code'])) {
             q(
-                "INSERT INTO students (user_id, student_code, program_type, faculty, major, entry_year, synced_at)
-                 VALUES (?, ?, ?, ?, ?, ?, NOW())
+                "INSERT INTO students (user_id, student_code, program_type, faculty, major, major_id, entry_year, synced_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
                  ON DUPLICATE KEY UPDATE
+                    major        = IF(major_id IS NULL, VALUES(major), major),
+                    major_id     = COALESCE(major_id, VALUES(major_id)),
                     program_type = COALESCE(VALUES(program_type), program_type),
                     faculty      = COALESCE(VALUES(faculty), faculty),
-                    major        = COALESCE(VALUES(major), major),
                     entry_year   = COALESCE(VALUES(entry_year), entry_year),
                     synced_at    = NOW()",
                 [
@@ -53,7 +57,8 @@ final class UniversitySync
                     $p['student_code'],
                     $p['program_type'] ?? q_val('SELECT program_type FROM students WHERE user_id = ?', [$id]) ?? '4year',
                     $p['faculty'] ?: setting('faculty_name', 'คณะวิศวกรรมศาสตร์และเทคโนโลยี'),
-                    $p['major'] ?: setting('default_major', 'วิศวกรรมคอมพิวเตอร์และการสื่อสาร'),
+                    $majorId ? majors()[$majorId]['name'] : ($p['major'] ?: '-'),
+                    $majorId,
                     $p['entry_year'] ?? null,
                 ]
             );
@@ -103,6 +108,11 @@ final class UniversitySync
                 // แผนการเรียนจากรหัสนักศึกษา: อัปเดตเฉพาะบัญชีที่สร้างจาก API (บัญชีที่ฝ่ายทะเบียนสร้าง/นำเข้าเอง ไม่ทับ)
                 if (!empty($p['program_type']) && $user['auth_source'] === 'university') {
                     q('UPDATE students SET program_type = ? WHERE user_id = ?', [$p['program_type'], $user['id']]);
+                }
+                // ยังไม่ระบุสาขา → ลองจับคู่จากชื่อสาขาที่ API ส่งมา
+                if (!q_val('SELECT major_id FROM students WHERE user_id = ?', [$user['id']])
+                    && ($mid = major_from_api($p['major'] ?? null, $p['department'] ?? null))) {
+                    set_student_major((int) $user['id'], $mid);
                 }
                 // ไม่ทับสาขาที่ฝ่ายทะเบียนตั้งไว้ (เติมสาขาให้เฉพาะตอนที่ยังว่าง)
                 q(
@@ -157,8 +167,12 @@ final class UniversitySync
             if (!$user['is_active']) {
                 return [null, 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อฝ่ายทะเบียน'];
             }
-            q('UPDATE users SET prefix = ?, email = COALESCE(email, ?), external_id = ? WHERE id = ?',
-                [$p['prefix'] ?: $user['prefix'], $p['email'], $p['username'], $user['id']]);
+            // บัญชีที่ฝ่ายทะเบียน/ระบบสร้างรอไว้ (ชื่อผู้ใช้ wait.xxx) → ใช้ชื่อผู้ใช้ e-Passport แทน
+            $rename = str_starts_with($user['username'], 'wait.') && !q_val('SELECT 1 FROM users WHERE username = ?', [$p['username']]);
+            q('UPDATE users SET username = ?, prefix = ?, email = COALESCE(email, ?), external_id = ?,
+                                major_id = COALESCE(major_id, ?) WHERE id = ?',
+                [$rename ? $p['username'] : $user['username'], $p['prefix'] ?: $user['prefix'], $p['email'], $p['username'],
+                 major_from_api($p['major'] ?? null, $p['department'] ?? null), $user['id']]);
             audit('university.link_staff', ['username' => $p['username'], 'local_username' => $user['username']]);
             return [q_one('SELECT * FROM users WHERE id = ?', [$user['id']]), null];
         }

@@ -5,7 +5,7 @@ use App\Services\StudentQuery;
  * ส่งออกรายชื่อนักศึกษา + ชั่วโมงสะสม เป็น CSV (เปิดด้วย Excel ได้ ภาษาไทยไม่เพี้ยน)
  * ใช้ตัวกรองเดียวกับหน้าค้นหา
  */
-['from' => $from, 'params' => $params, 'required' => $required] = StudentQuery::build(StudentQuery::filtersFromRequest());
+['from' => $from, 'params' => $params, 'required' => $required] = StudentQuery::build(StudentQuery::filtersFromRequest() + ['major_id' => viewer_major_id()]);
 $rows = q_all('SELECT ' . StudentQuery::columns($required) . " $from ORDER BY st.student_code", $params);
 
 audit('export.students', ['count' => count($rows)]);

@@ -1,9 +1,12 @@
 <?php
 use App\Services\HoursService;
 
+$major = require_office_major();
+$mid = (int) $major['id'];
 $required = HoursService::requiredSqlExpr('st');
 $base = "FROM students st JOIN users u ON u.id = st.user_id AND u.is_active = 1
-         LEFT JOIN (" . HoursService::earnedSql() . ") h ON h.student_id = st.user_id";
+         LEFT JOIN (" . HoursService::earnedSql() . ") h ON h.student_id = st.user_id
+         WHERE st.major_id = $mid";
 
 $byProgram = q_all(
     "SELECT st.program_type, COUNT(*) AS total,
@@ -30,20 +33,20 @@ $bySkill = q_all(
        FROM skills sk
        LEFT JOIN activities a ON a.skill_id = sk.id
        LEFT JOIN participations p ON p.activity_id = a.id AND p.status = 'completed' AND p.result = 'pass'
-      WHERE sk.academic_year = ?
+      WHERE sk.academic_year = ? AND sk.major_id = ?
       GROUP BY sk.id, sk.name ORDER BY sk.sort_order",
-    [current_academic_year()]
+    [current_academic_year(), $mid]
 );
 $maxSkill = max(1, ...array_map(fn($r) => (float) $r['hours'], $bySkill ?: [['hours' => 1]]));
 
 $counts = q_one(
-    "SELECT (SELECT COUNT(*) FROM users WHERE role = 'teacher' AND is_active = 1) AS teachers,
-            (SELECT COUNT(*) FROM activities WHERE status IN ('open','closed')) AS active_activities,
-            (SELECT COUNT(*) FROM participations WHERE status = 'completed') AS records"
+    "SELECT (SELECT COUNT(*) FROM users WHERE role = 'teacher' AND is_active = 1 AND major_id = $mid) AS teachers,
+            (SELECT COUNT(*) FROM activities a JOIN skills sk ON sk.id = a.skill_id WHERE a.status IN ('open','closed') AND sk.major_id = $mid) AS active_activities,
+            (SELECT COUNT(*) FROM participations p JOIN students s ON s.user_id = p.student_id WHERE p.status = 'completed' AND s.major_id = $mid) AS records"
 );
 
 layout_start('ภาพรวมฝ่ายทะเบียน');
-page_header('ภาพรวมการฝึกทักษะวิชาชีพ', 'สรุปข้อมูลนักศึกษาทั้งหมด', '<a href="/registrar/students" class="btn btn-primary"><i class="bi bi-search me-1"></i>ค้นหานักศึกษา</a>');
+page_header('ภาพรวมการฝึกทักษะวิชาชีพ', 'สาขา' . $major['name'], '<a href="/registrar/students" class="btn btn-primary"><i class="bi bi-search me-1"></i>ค้นหานักศึกษา</a>');
 ?>
 <div class="row g-3 mb-4">
     <?php foreach ([
@@ -73,7 +76,7 @@ page_header('ภาพรวมการฝึกทักษะวิชาช�
                     $pct = $r['total'] ? round($r['completed'] / $r['total'] * 100) : 0; ?>
                     <div class="mb-3">
                         <div class="d-flex justify-content-between">
-                            <strong>แผน <?= program_label($r['program_type']) ?> <span class="text-muted small">(เกณฑ์ <?= fmt_hours(HoursService::requiredHours($r['program_type'])) ?> ชม.)</span></strong>
+                            <strong>แผน <?= program_label($r['program_type']) ?> <span class="text-muted small">(เกณฑ์ <?= fmt_hours(HoursService::requiredHours($r['program_type'], $mid)) ?> ชม.)</span></strong>
                             <span><?= $r['completed'] ?>/<?= $r['total'] ?> คน (<?= $pct ?>%)</span>
                         </div>
                         <?= progress_bar((float) $r['completed'], (float) $r['total']) ?>

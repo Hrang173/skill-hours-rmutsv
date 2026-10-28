@@ -1,6 +1,6 @@
 <?php
 /**
- * กำหนดอาจารย์ที่เป็น "หัวหน้าหลักสูตร" ของแต่ละสาขา
+ * กำหนดอาจารย์ที่เป็น "หัวหน้าหลักสูตร" ของแต่ละสาขา (เลือกได้เฉพาะอาจารย์ของสาขานั้น)
  * ชื่อหัวหน้าหลักสูตรจะแสดงในวงเล็บท้ายแบบบันทึกการฝึกทักษะวิชาชีพของนักศึกษาสาขานั้น
  */
 if (is_post()) {
@@ -25,7 +25,7 @@ if (is_post()) {
         }
         q('UPDATE users SET head_of_major = NULL WHERE head_of_major = ?', [$major]);
         if (!empty($heads[$i])) {
-            q("UPDATE users SET head_of_major = ? WHERE id = ? AND role = 'teacher'", [$major, $heads[$i]]);
+            q("UPDATE users SET head_of_major = ? WHERE id = ? AND role = 'teacher' AND major_id = (SELECT id FROM majors WHERE name = ?)", [$major, $heads[$i], $major]);
         }
     }
     db()->commit();
@@ -34,13 +34,11 @@ if (is_post()) {
     redirect('/registrar/program-heads');
 }
 
-// สาขาทั้งหมดที่มีในระบบ (จากนักศึกษา + สาขาเริ่มต้น + สาขาที่ตั้งหัวหน้าไว้)
-$majors = array_values(array_unique(array_filter(array_merge(
-    [setting('default_major', '')],
-    array_column(q_all('SELECT DISTINCT major FROM students ORDER BY major'), 'major'),
-    array_column(q_all('SELECT DISTINCT head_of_major FROM users WHERE head_of_major IS NOT NULL'), 'head_of_major')
-))));
-$teachers = q_all("SELECT id, prefix, first_name, last_name, head_of_major, signature_data IS NOT NULL AS has_sig
+// สาขาทั้งหมดในระบบ (เพิ่มสาขาได้ที่หน้า "เลือกสาขา / เพิ่มสาขา")
+$majorRows = majors();
+$majors = array_values(array_column($majorRows, 'name'));
+$majorIdOf = array_column($majorRows, 'id', 'name');
+$teachers = q_all("SELECT id, prefix, first_name, last_name, head_of_major, major_id, signature_data IS NOT NULL AS has_sig
                      FROM users WHERE role = 'teacher' AND is_active = 1 ORDER BY first_name");
 $headOf = [];
 foreach ($teachers as $t) {
@@ -50,9 +48,13 @@ foreach ($teachers as $t) {
 }
 $studentCount = array_column(q_all('SELECT major, COUNT(*) AS n FROM students GROUP BY major'), 'n', 'major');
 
-$teacherSelect = function (string $name, ?int $selected) use ($teachers): string {
+// เลือกได้เฉพาะอาจารย์ของสาขานั้น
+$teacherSelect = function (string $name, ?int $selected, ?string $major = null) use ($teachers, $majorIdOf): string {
     $html = '<select name="' . $name . '" class="form-select"><option value="0">— ยังไม่กำหนด —</option>';
     foreach ($teachers as $t) {
+        if ($major !== null && (int) $t['major_id'] !== (int) ($majorIdOf[$major] ?? 0)) {
+            continue;
+        }
         $html .= '<option value="' . $t['id'] . '"' . ((int) $t['id'] === $selected ? ' selected' : '') . '>' . e(full_name($t)) . '</option>';
     }
     return $html . '</select>';
@@ -72,16 +74,10 @@ page_header('หัวหน้าหลักสูตร', 'กำหนดว
                 <tr>
                     <td><?= e($major) ?><input type="hidden" name="majors[<?= $i ?>]" value="<?= e($major) ?>"></td>
                     <td class="text-center"><?= (int) ($studentCount[$major] ?? 0) ?></td>
-                    <td><?= $teacherSelect("heads[$i]", $head ? (int) $head['id'] : null) ?></td>
+                    <td><?= $teacherSelect("heads[$i]", $head ? (int) $head['id'] : null, $major) ?></td>
                     <td class="small"><?= $head ? ($head['has_sig'] ? '<span class="text-success"><i class="bi bi-check-circle me-1"></i>มี</span>' : '<span class="text-muted">ยังไม่มี</span>') : '-' ?></td>
                 </tr>
             <?php endforeach; ?>
-                <tr class="table-light">
-                    <td><input type="text" name="new_major" class="form-control form-control-sm" placeholder="+ เพิ่มสาขาวิชาใหม่"></td>
-                    <td></td>
-                    <td><?= $teacherSelect('new_head', null) ?></td>
-                    <td></td>
-                </tr>
             </tbody>
         </table>
     </div>

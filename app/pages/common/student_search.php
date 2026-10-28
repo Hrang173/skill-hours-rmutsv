@@ -7,7 +7,7 @@ use App\Services\StudentQuery;
 $me = current_user();
 $isRegistrar = is_office();
 
-$f = StudentQuery::filtersFromRequest();
+$f = StudentQuery::filtersFromRequest() + ['major_id' => viewer_major_id()];
 ['q' => $kw, 'program' => $program, 'done' => $done, 'year' => $year] = $f;
 ['from' => $from, 'params' => $params, 'required' => $required] = StudentQuery::build($f);
 

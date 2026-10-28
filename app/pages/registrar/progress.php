@@ -11,6 +11,8 @@ use App\Services\ProgressService;
 $year = (string) input('year', '');
 $stage = (string) input('stage', '');
 $kw = (string) input('q', '');
+$major = require_office_major();
+$mid = (int) $major['id'];
 $from = ProgressService::fromSql();
 $yearSql = ProgressService::entryYearSql();
 $stageSql = ProgressService::stageSql();
@@ -27,9 +29,9 @@ if ($year === '' && $kw !== '') {
 
 if ($year === '') {
     $found = $kw !== '' ? q_all('SELECT ' . ProgressService::columns() . " $from
-        WHERE st.status = 'studying' AND (st.student_code LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ?)
+        WHERE st.status = 'studying' AND st.major_id = $mid AND (st.student_code LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ?)
         ORDER BY st.student_code LIMIT 100", [like(ltrim(trim($kw), 'sS')), like($kw), like($kw), like($kw)]) : null;
-    $rows = q_all("SELECT $yearSql AS y, $stageSql AS stage, COUNT(*) AS n $from WHERE st.status = 'studying' GROUP BY y, stage");
+    $rows = q_all("SELECT $yearSql AS y, $stageSql AS stage, COUNT(*) AS n $from WHERE st.status = 'studying' AND st.major_id = $mid GROUP BY y, stage");
     $years = [];
     foreach ($rows as $r) {
         $key = $r['y'] === null ? 'none' : (string) $r['y'];
@@ -37,7 +39,7 @@ if ($year === '') {
     }
     uksort($years, fn($a, $b) => $a === 'none' ? 1 : ($b === 'none' ? -1 : (int) $b - (int) $a));
 } else {
-    $where = ["st.status = 'studying'"];
+    $where = ["st.status = 'studying'", "st.major_id = $mid"];
     $params = [];
     if ($year === 'none') {
         $where[] = "$yearSql IS NULL";
@@ -58,7 +60,7 @@ $yearLabel = fn(string $y) => $y === 'none' ? 'ไม่ทราบปีที
 
 layout_start('ติดตามขั้นตอนนักศึกษา');
 if ($year === ''): ?>
-    <?php page_header('ติดตามขั้นตอนนักศึกษา', 'แยกตามปีที่เข้า (จากรหัสนักศึกษาหลักที่ 2-3 เช่น 666415850004 → เข้าปี 2566) · เฉพาะนักศึกษาที่กำลังศึกษา'); ?>
+    <?php page_header('ติดตามขั้นตอนนักศึกษา', 'สาขา' . $major['name'] . ' · แยกตามปีที่เข้า (จากรหัสนักศึกษาหลักที่ 2-3 เช่น 666415850004 → เข้าปี 2566) · เฉพาะนักศึกษาที่กำลังศึกษา'); ?>
     <form class="row g-2 mb-3" method="get">
         <div class="col-md-6"><input type="search" name="q" class="form-control" value="<?= e($kw) ?>" autofocus
             placeholder="ค้นหาปีที่เข้า (66 หรือ 2566) / รหัสนักศึกษา / ชื่อ"></div>

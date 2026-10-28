@@ -37,6 +37,8 @@ return [
     'registrar'                 => ['registrar/dashboard.php', OFFICE_ROLES],
     'registrar/students'        => ['common/student_search.php', OFFICE_ROLES],
     'registrar/progress'        => ['registrar/progress.php', OFFICE_ROLES],
+    'registrar/majors'          => ['registrar/majors.php', OFFICE_ROLES],
+    'registrar/unassigned'      => ['registrar/unassigned.php', OFFICE_ROLES],
     'registrar/export'          => ['registrar/export.php', OFFICE_ROLES],
     'registrar/users'           => ['registrar/users.php', OFFICE_ROLES],
     'registrar/user/edit'       => ['registrar/user_form.php', OFFICE_ROLES],

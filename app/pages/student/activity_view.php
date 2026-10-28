@@ -5,8 +5,8 @@ $me = current_user();
 $act = ActivityService::find(input_int('id'));
 $my = $act ? q_one('SELECT * FROM participations WHERE activity_id = ? AND student_id = ?', [$act['id'], $me['id']]) : null;
 
-// กิจกรรมแบบมอบหมาย ดูได้เฉพาะคนที่ถูกมอบหมาย
-if (!$act || ($act['visibility'] === 'assigned' && !$my)) {
+// กิจกรรมแบบมอบหมาย ดูได้เฉพาะคนที่ถูกมอบหมาย · กิจกรรมสาขาอื่นดูไม่ได้ (ยกเว้นเคยเข้าร่วมแล้ว)
+if (!$act || ($act['visibility'] === 'assigned' && !$my) || (!$my && (int) $act['skill_major_id'] !== (int) $me['major_id'])) {
     http_response_code(404);
     require APP_PATH . '/pages/errors/404.php';
     return;

@@ -361,6 +361,76 @@ function current_academic_year(): int
         ?? ((int) date('Y') + 543 - ((int) date('n') < 6 ? 1 : 0)));
 }
 
+/* ------------------------------------------------------------ สาขาวิชา */
+
+/** สาขาทั้งหมด [id => แถว] (เฉพาะที่เปิดใช้ ยกเว้น $all) */
+function majors(bool $all = false): array
+{
+    $rows = q_all('SELECT * FROM majors' . ($all ? '' : ' WHERE is_active = 1') . ' ORDER BY sort_order, id');
+    return array_column($rows, null, 'id');
+}
+
+function major(?int $id): ?array
+{
+    return $id ? q_one('SELECT * FROM majors WHERE id = ?', [$id]) : null;
+}
+
+/** จับคู่ชื่อสาขาจาก API (secname / depname ...) กับสาขาในระบบ: ตรงชื่อสาขา หรือชื่อใน api_names */
+function major_from_api(?string ...$names): ?int
+{
+    $norm = fn(?string $s) => mb_strtolower(preg_replace('/\s+/u', '', (string) $s));
+    foreach (majors() as $m) {
+        $known = array_map($norm, array_merge([$m['name']], preg_split('/\R/u', (string) $m['api_names'])));
+        foreach ($names as $n) {
+            if ($norm($n) !== '' && in_array($norm($n), $known, true)) {
+                return (int) $m['id'];
+            }
+        }
+    }
+    return null;
+}
+
+/** ตั้งสาขาให้นักศึกษา (major_id + ชื่อสาขาที่ใช้พิมพ์บนแบบบันทึก) */
+function set_student_major(int $userId, ?int $majorId): void
+{
+    $name = $majorId ? q_val('SELECT name FROM majors WHERE id = ?', [$majorId]) : null;
+    q('UPDATE students SET major_id = ?, major = COALESCE(?, major) WHERE user_id = ?', [$majorId, $name, $userId]);
+}
+
+/** สาขาที่ฝ่ายทะเบียน/admin เลือกดูอยู่ (เก็บใน session) */
+function office_major(): ?array
+{
+    static $m = false;
+    if ($m === false) {
+        $id = (int) ($_SESSION['office_major_id'] ?? 0);
+        $m = $id ? q_one('SELECT * FROM majors WHERE id = ? AND is_active = 1', [$id]) : null;
+    }
+    return $m;
+}
+
+/** หน้างานทะเบียนที่ต้องเลือกสาขาก่อน → ยังไม่เลือก ส่งไปหน้าเลือกสาขา */
+function require_office_major(): array
+{
+    $m = office_major();
+    if (!$m) {
+        redirect('/registrar/majors', ['next' => parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH)]);
+    }
+    return $m;
+}
+
+/**
+ * สาขาที่ผู้ใช้ปัจจุบันเห็นข้อมูลได้: อาจารย์ = สาขาตัวเอง, ฝ่ายทะเบียน/admin = สาขาที่เลือกอยู่ (ยังไม่เลือก → ไปหน้าเลือกสาขา)
+ * คืน 0 ถ้ายังไม่มีสาขา (ไม่เห็นนักศึกษาใคร)
+ */
+function viewer_major_id(): int
+{
+    $u = current_user();
+    if (in_array($u['role'] ?? '', OFFICE_ROLES, true)) {
+        return (int) require_office_major()['id'];
+    }
+    return (int) ($u['major_id'] ?? 0);
+}
+
 /** ปีการศึกษาของภาคที่เลือก (ไม่เลือกภาค = ปีปัจจุบัน) */
 function semester_year(?int $semesterId): int
 {

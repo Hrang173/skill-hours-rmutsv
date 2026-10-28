@@ -2,7 +2,10 @@
 /**
  * นำเข้ารายชื่อนักศึกษาจากไฟล์ CSV (บันทึกจาก Excel เป็น "CSV UTF-8")
  * มีรหัสนักศึกษาอยู่แล้ว = อัปเดตข้อมูล, ยังไม่มี = สร้างบัญชีใหม่ (รหัสผ่านเริ่มต้น = รหัสนักศึกษา)
+ * สาขา: ช่อง major ตรงกับสาขาในระบบ → ใช้สาขานั้น, ว่าง/ไม่ตรง → สาขาที่เลือกดูอยู่
  */
+$officeMajor = require_office_major();
+$majors = majors();
 const IMPORT_COLUMNS = ['student_code', 'prefix', 'first_name', 'last_name', 'program_type', 'entry_year', 'email', 'major'];
 
 if (input('template')) {
@@ -52,14 +55,15 @@ if (is_post()) {
             : (program_type_from_code($code) ?? '4year');
         $year = (int) ($r['entry_year'] ?? 0) ?: entry_year_from_code($code);
         $email = filter_var($r['email'] ?? '', FILTER_VALIDATE_EMAIL) ?: null;
-        $major = ($r['major'] ?? '') ?: setting('default_major');
+        $majorId = major_from_api($r['major'] ?? null) ?? (int) $officeMajor['id'];
+        $major = $majors[$majorId]['name'];
 
         $existing = q_one('SELECT user_id FROM students WHERE student_code = ?', [$code]);
         if ($existing) {
             q('UPDATE users SET prefix = ?, first_name = ?, last_name = ?, email = COALESCE(?, email) WHERE id = ?',
                 [$r['prefix'] ?? '', $r['first_name'], $r['last_name'], $email, $existing['user_id']]);
-            q('UPDATE students SET program_type = ?, entry_year = COALESCE(?, entry_year), major = ? WHERE user_id = ?',
-                [$type, $year, $major, $existing['user_id']]);
+            q('UPDATE students SET program_type = ?, entry_year = COALESCE(?, entry_year), major = ?, major_id = ? WHERE user_id = ?',
+                [$type, $year, $major, $majorId, $existing['user_id']]);
             $report['updated']++;
         } else {
             if (q_val('SELECT 1 FROM users WHERE username = ?', [$code])) {
@@ -68,8 +72,8 @@ if (is_post()) {
             }
             q("INSERT INTO users (username, password_hash, role, prefix, first_name, last_name, email, must_change_password) VALUES (?, ?, 'student', ?, ?, ?, ?, 1)",
                 [$code, password_hash($code, PASSWORD_DEFAULT), $r['prefix'] ?? '', $r['first_name'], $r['last_name'], $email]);
-            q('INSERT INTO students (user_id, student_code, program_type, entry_year, major, faculty) VALUES (?, ?, ?, ?, ?, ?)',
-                [db()->lastInsertId(), $code, $type, $year, $major, setting('faculty_name')]);
+            q('INSERT INTO students (user_id, student_code, program_type, entry_year, major, major_id, faculty) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [db()->lastInsertId(), $code, $type, $year, $major, $majorId, setting('faculty_name')]);
             $report['created']++;
         }
     }
@@ -79,7 +83,7 @@ if (is_post()) {
 }
 
 layout_start('นำเข้านักศึกษา');
-page_header('นำเข้ารายชื่อนักศึกษา (CSV)', 'เพิ่มหรืออัปเดตนักศึกษาทีละหลายคน');
+page_header('นำเข้ารายชื่อนักศึกษา (CSV)', 'เพิ่มหรืออัปเดตนักศึกษาทีละหลายคน · ช่อง major ว่าง = สาขา' . $officeMajor['name']);
 ?>
 <?php if ($report): ?>
     <div class="alert alert-<?= $report['errors'] ? 'warning' : 'success' ?>">

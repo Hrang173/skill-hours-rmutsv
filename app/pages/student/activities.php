@@ -3,7 +3,7 @@ use App\Services\ActivityService;
 use App\Services\HoursService;
 
 $me = current_user();
-$cap = HoursService::teacherCap();
+$cap = HoursService::teacherCap((int) $me['major_id'] ?: null);
 
 // ส่งคำขอ / ยกเลิกคำขอ
 if (is_post()) {
@@ -11,7 +11,8 @@ if (is_post()) {
     $act = ActivityService::find($activityId);
     $action = input('action');
 
-    if (!$act || $act['visibility'] !== 'public') {
+    // เห็น/ขอเข้าร่วมได้เฉพาะกิจกรรมของสาขาตัวเอง
+    if (!$act || $act['visibility'] !== 'public' || (int) $act['skill_major_id'] !== (int) $me['major_id']) {
         flash('danger', 'ไม่พบกิจกรรม');
         redirect_back('/student/activities');
     }
@@ -58,8 +59,8 @@ if (is_post()) {
 // ตัวกรอง
 $skillId = input_int('skill');
 $kw = (string) input('q', '');
-$where = ["a.visibility = 'public'", "a.status = 'open'"];
-$params = [];
+$where = ["a.visibility = 'public'", "a.status = 'open'", 'sk.major_id = ?'];
+$params = [(int) $me['major_id']];
 if ($skillId) {
     $where[] = 'a.skill_id = ?';
     $params[] = $skillId;
@@ -85,7 +86,7 @@ $activities = q_all(
     array_merge([$me['id'], $me['id']], $params)
 );
 $sessions = ActivityService::sessionsFor(array_column($activities, 'id'));
-$skills = q_all('SELECT id, name FROM skills WHERE is_active = 1 AND academic_year = ? ORDER BY sort_order', [current_academic_year()]);
+$skills = q_all('SELECT id, name FROM skills WHERE is_active = 1 AND academic_year = ? AND major_id = ? ORDER BY sort_order', [current_academic_year(), (int) $me['major_id']]);
 
 layout_start('ขอเข้าร่วมกิจกรรม');
 page_header('กิจกรรมที่เปิดรับ', 'เลือกกิจกรรมที่อาจารย์โพสต์ไว้แล้วกดส่งคำขอเข้าร่วม');
@@ -156,7 +157,7 @@ page_header('กิจกรรมที่เปิดรับ', 'เลือ
         </div>
     <?php endforeach; ?>
     <?php if (!$activities): ?>
-        <div class="col-12"><div class="alert alert-light border text-center">ยังไม่มีกิจกรรมที่เปิดรับในขณะนี้</div></div>
+        <div class="col-12"><div class="alert alert-light border text-center"><?= $me['major_id'] ? 'ยังไม่มีกิจกรรมที่เปิดรับในขณะนี้' : 'บัญชีของคุณยังไม่ระบุสาขาวิชา จึงยังไม่เห็นกิจกรรม — กรุณารอฝ่ายทะเบียนกำหนดสาขาให้' ?></div></div>
     <?php endif; ?>
 </div>
 

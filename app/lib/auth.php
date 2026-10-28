@@ -19,7 +19,8 @@ function current_user(): ?array
         return $cache[$id];
     }
     $user = $cache[$id] = q_one(
-        'SELECT u.*, s.student_code, s.program_type, s.major, s.faculty, s.entry_year
+        // major_id = สาขาของนักศึกษา (students) หรือของอาจารย์ (users) — คอลัมน์หลังทับ u.major_id
+        'SELECT u.*, s.student_code, s.program_type, s.major, s.faculty, s.entry_year, COALESCE(s.major_id, u.major_id) AS major_id
            FROM users u LEFT JOIN students s ON s.user_id = u.id
           WHERE u.id = ? AND u.is_active = 1',
         [$id]
@@ -161,6 +162,10 @@ function can_view_student(int $studentUserId): bool
     $u = current_user();
     if (!$u) {
         return false;
+    }
+    if ($u['role'] === 'teacher') {
+        // แต่ละสาขาแยกกัน: อาจารย์ดูได้เฉพาะนักศึกษาสาขาตัวเอง
+        return $u['major_id'] && (int) q_val('SELECT major_id FROM students WHERE user_id = ?', [$studentUserId]) === (int) $u['major_id'];
     }
     return in_array($u['role'], STAFF_ROLES, true) || (int) $u['id'] === $studentUserId;
 }

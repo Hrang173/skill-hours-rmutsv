@@ -40,6 +40,7 @@ function nav_items(string $role): array
 function office_nav(string $home): array
 {
     return [
+        ['/registrar/majors',        'mortarboard',  'เลือกสาขา / เพิ่มสาขา'],
         [$home,                      'speedometer2', 'ภาพรวม'],
         ['/registrar/progress',      'diagram-3',    'ติดตามขั้นตอนนักศึกษา'],
         ['/registrar/students',      'search',       'ค้นหานักศึกษา'],
@@ -85,6 +86,11 @@ function layout_start(string $title, array $opts = []): void
             <img src="<?= asset('img/logo.png') ?>" alt="" height="34">
             <span class="d-none d-sm-inline"><?= e($appName) ?></span>
         </a>
+        <?php if (in_array($user['role'], OFFICE_ROLES, true)): $om = office_major(); ?>
+            <a href="/registrar/majors?next=<?= e(urlencode($path)) ?>" class="btn btn-sm btn-light ms-2 text-truncate major-switch" title="เปลี่ยนสาขาที่ดู">
+                <i class="bi bi-mortarboard me-1"></i><?= $om ? e($om['name']) : 'เลือกสาขา' ?> <i class="bi bi-chevron-down small"></i>
+            </a>
+        <?php endif; ?>
         <div class="ms-auto d-flex align-items-center gap-2">
             <a href="/notifications" class="btn btn-link text-white position-relative" title="การแจ้งเตือน">
                 <i class="bi bi-bell fs-5"></i>
@@ -98,7 +104,8 @@ function layout_start(string $title, array $opts = []): void
                     <span class="d-none d-md-inline"><?= e(full_name($user)) ?></span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                    <li><span class="dropdown-item-text small text-muted"><?= e(role_label($user['role'])) ?><?= $user['student_code'] ? ' · ' . e($user['student_code']) : '' ?></span></li>
+                    <li><span class="dropdown-item-text small text-muted"><?= e(role_label($user['role'])) ?><?= $user['student_code'] ? ' · ' . e($user['student_code']) : '' ?>
+                        <?php if (in_array($user['role'], ['student', 'teacher'], true)): ?><br>สาขา<?= e(major((int) $user['major_id'] ?: null)['name'] ?? ' : ยังไม่ระบุ') ?><?php endif; ?></span></li>
                     <li><a class="dropdown-item" href="/profile"><i class="bi bi-person me-2"></i>ข้อมูลส่วนตัว / เปลี่ยนรหัสผ่าน</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ</a></li>
@@ -129,6 +136,9 @@ function layout_start(string $title, array $opts = []): void
         </div>
     </aside>
     <main class="flex-grow-1 app-main">
+    <?php if (in_array($user['role'], ['student', 'teacher'], true) && !$user['major_id']): ?>
+        <div class="alert alert-warning"><i class="bi bi-hourglass-split me-1"></i>บัญชีของคุณ<b>ยังไม่ระบุสาขาวิชา</b> จึงยังไม่เห็น<?= $user['role'] === 'student' ? 'กิจกรรม' : 'นักศึกษาและทักษะ' ?> — กรุณารอฝ่ายทะเบียนกำหนดสาขาให้</div>
+    <?php endif; ?>
 <?php else: ?>
 <div class="app-main-guest">
 <?php endif; ?>

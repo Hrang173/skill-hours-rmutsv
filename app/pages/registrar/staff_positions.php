@@ -11,10 +11,13 @@ const POSITIONS = [
 
 $position = fn(array $u): string => $u['role'] === 'registrar' ? 'registrar' : ($u['head_of_major'] ? 'head' : 'teacher');
 
+$officeMajor = require_office_major();
+
 if (is_post()) {
     $uid = input_int('id');
     $new = (string) input('position', '');
-    $major = mb_substr(trim((string) input('major', '')), 0, 150);
+    // หัวหน้าหลักสูตรของสาขาที่เลือกดูอยู่
+    $major = $officeMajor['name'];
     $u = q_one("SELECT * FROM users WHERE id = ? AND role IN ('teacher', 'registrar')", [$uid]);
 
     if (!$u) {
@@ -23,8 +26,8 @@ if (is_post()) {
         flash('danger', 'ไม่สามารถเปลี่ยนตำแหน่งของตัวเองได้');
     } elseif (!isset(POSITIONS[$new])) {
         flash('danger', 'ตำแหน่งไม่ถูกต้อง');
-    } elseif ($new === 'head' && $major === '') {
-        flash('danger', 'กรุณาระบุสาขาวิชาที่เป็นหัวหน้าหลักสูตร');
+    } elseif ($new === 'head' && (int) $u['major_id'] !== (int) $officeMajor['id']) {
+        flash('danger', 'หัวหน้าหลักสูตรสาขา' . $major . ' ต้องเป็นอาจารย์ของสาขานี้');
     } else {
         $old = $position($u);
         db()->beginTransaction();
@@ -35,7 +38,9 @@ if (is_post()) {
             q('UPDATE users SET head_of_major = NULL WHERE head_of_major = ? AND id <> ?', [$major, $uid]);
             q("UPDATE users SET role = 'teacher', head_of_major = ? WHERE id = ?", [$major, $uid]);
         } else {
-            q('UPDATE users SET role = ?, head_of_major = NULL WHERE id = ?', [$new, $uid]);
+            // ฝ่ายทะเบียน → อาจารย์: เข้าสาขาที่เลือกดูอยู่ (ถ้ายังไม่มีสาขา)
+            q("UPDATE users SET role = ?, head_of_major = NULL, major_id = IF(? = 'teacher', COALESCE(major_id, ?), major_id) WHERE id = ?",
+                [$new, $new, $officeMajor['id'], $uid]);
         }
         db()->commit();
 
@@ -53,34 +58,28 @@ if (is_post()) {
 }
 
 $kw = (string) input('q', '');
-$where = "u.role IN ('teacher', 'registrar')";
-$params = [];
+// อาจารย์ของสาขาที่เลือก + ฝ่ายทะเบียนทั้งหมด
+$where = "(u.role = 'registrar' OR (u.role = 'teacher' AND u.major_id = ?))";
+$params = [(int) $officeMajor['id']];
 if ($kw !== '') {
     $where .= ' AND (u.username LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)';
-    $params = [like($kw), like($kw), like($kw)];
+    array_push($params, like($kw), like($kw), like($kw));
 }
 $staff = q_all(
     "SELECT u.*, (SELECT COUNT(*) FROM activities a WHERE a.teacher_id = u.id) AS activity_count
        FROM users u WHERE $where ORDER BY u.is_active DESC, FIELD(u.role, 'registrar', 'teacher'), u.head_of_major IS NULL, u.first_name",
     $params
 );
-// สาขาที่เลือกได้ (สาขาเริ่มต้น + สาขาของนักศึกษา + สาขาที่ตั้งหัวหน้าไว้แล้ว)
-$majors = array_values(array_unique(array_filter(array_merge(
-    [setting('default_major', '')],
-    array_column(q_all('SELECT DISTINCT major FROM students ORDER BY major'), 'major'),
-    array_column(q_all('SELECT DISTINCT head_of_major FROM users WHERE head_of_major IS NOT NULL'), 'head_of_major')
-), fn($m) => $m !== '' && $m !== '-')));
 
 $badge = ['teacher' => 'secondary', 'head' => 'success', 'registrar' => 'primary'];
 
 layout_start('ตำแหน่งบุคลากร');
-page_header('ตำแหน่งบุคลากร', 'กำหนดว่าบุคลากรแต่ละท่านเป็นอาจารย์ หัวหน้าหลักสูตร หรือฝ่ายทะเบียน — บัญชีที่สร้างจาก e-Passport จะเริ่มต้นเป็นอาจารย์');
+page_header('ตำแหน่งบุคลากร', 'สาขา' . $officeMajor['name'] . ' · กำหนดว่าบุคลากรแต่ละท่านเป็นอาจารย์ หัวหน้าหลักสูตร หรือฝ่ายทะเบียน — อาจารย์ที่ยังไม่ระบุสาขาอยู่ที่หน้า "ยังไม่ระบุสาขา"');
 ?>
 <form class="row g-2 mb-3" method="get">
     <div class="col-md-8"><input type="search" name="q" class="form-control" placeholder="ชื่อผู้ใช้ / ชื่อ / นามสกุล" value="<?= e($kw) ?>"></div>
     <div class="col-md-2"><button class="btn btn-primary w-100">ค้นหา</button></div>
 </form>
-<datalist id="majors"><?php foreach ($majors as $m): ?><option value="<?= e($m) ?>"><?php endforeach; ?></datalist>
 <div class="card">
     <div class="table-responsive">
         <table class="table align-middle mb-0">
@@ -112,8 +111,7 @@ page_header('ตำแหน่งบุคลากร', 'กำหนดว่
                                         <option value="<?= $k ?>" <?= $pos === $k ? 'selected' : '' ?>><?= $l ?></option>
                                     <?php endforeach; ?>
                                 </select>
-                                <input name="major" list="majors" class="form-control form-control-sm" placeholder="สาขาวิชา"
-                                       value="<?= e($s['head_of_major'] ?: setting('default_major', '')) ?>" <?= $pos === 'head' ? '' : 'hidden' ?>>
+                                <span class="small text-muted align-self-center text-nowrap" data-major-label <?= $pos === 'head' ? '' : 'hidden' ?>>สาขา<?= e($officeMajor['name']) ?></span>
                                 <button class="btn btn-sm btn-outline-primary text-nowrap"><i class="bi bi-save me-1"></i>บันทึก</button>
                             </form>
                         <?php endif; ?>
@@ -131,7 +129,7 @@ page_header('ตำแหน่งบุคลากร', 'กำหนดว่
 </div>
 <script>
 document.querySelectorAll('.staff-position').forEach(f => {
-    const sel = f.querySelector('[name=position]'), major = f.querySelector('[name=major]');
+    const sel = f.querySelector('[name=position]'), major = f.querySelector('[data-major-label]');
     sel.addEventListener('change', () => { major.hidden = sel.value !== 'head'; });
     f.addEventListener('submit', e => {
         if (sel.value === 'registrar' && f.dataset.confirmRegistrar && !confirm(f.dataset.confirmRegistrar)) e.preventDefault();

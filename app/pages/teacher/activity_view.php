@@ -124,7 +124,7 @@ $parts = q_all(
 );
 $group = ['pending' => [], 'active' => [], 'other' => []];
 $withMe = HoursService::hoursWithTeacher((int) $me['id'], array_column($parts, 'student_id'));
-$cap = HoursService::teacherCap();
+$cap = HoursService::teacherCap((int) $me['major_id'] ?: null);
 /** ชั่วโมงที่นักศึกษามีกับอาจารย์ท่านนี้ เช่น "12/25" */
 $withMeBadge = function (int $sid) use ($withMe, $cap): string {
     $h = $withMe[$sid] ?? 0.0;

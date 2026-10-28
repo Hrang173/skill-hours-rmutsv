@@ -28,6 +28,11 @@ final class StudentQuery
     {
         $where = ['1=1'];
         $params = [];
+        // สาขา (หน้าเว็บส่งสาขาของผู้ดูมาเสมอ · API ไม่ระบุ = ทุกสาขา)
+        if (isset($f['major_id'])) {
+            $where[] = 'st.major_id = ?';
+            $params[] = (int) $f['major_id'];
+        }
         if (($f['q'] ?? '') !== '') {
             $where[] = "(st.student_code LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ?)";
             array_push($params, like($f['q']), like($f['q']), like($f['q']), like($f['q']));

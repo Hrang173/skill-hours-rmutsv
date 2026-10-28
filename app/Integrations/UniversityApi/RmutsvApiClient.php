@@ -178,6 +178,7 @@ final class RmutsvApiClient implements UniversityApiInterface
             'faculty'      => $str('facname') ?: null,
             'faculty_code' => $str('faccode') ?: null,
             'major'        => $major ?: null,
+            'department'   => $str('depname') ?: null,
             // API ไม่บอกแผนการเรียน — ดูจากรหัสนักศึกษา (หลักที่ 4: 4 = 4 ปี, 2 = เทียบโอน)
             'program_type' => $isStudent ? program_type_from_code($studentCode) : null,
             // ปีที่เข้าจากรหัสนักศึกษา หลักที่ 2-3 (666415850004 → 2566)

@@ -12,7 +12,8 @@ $st = q_one(
       WHERE u.id = ?",
     [$id]
 );
-if (!$st) {
+// อาจารย์ดูได้เฉพาะนักศึกษาสาขาตัวเอง (ดู can_view_student)
+if (!$st || !can_view_student($id)) {
     flash('danger', 'ไม่พบนักศึกษา');
     redirect_back('/');
 }

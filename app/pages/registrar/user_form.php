@@ -1,6 +1,9 @@
 <?php
 $id = input_int('id');
-$u = $id ? q_one('SELECT u.*, s.student_code, s.program_type, s.faculty, s.major, s.entry_year, s.advisor_id, s.status AS student_status FROM users u LEFT JOIN students s ON s.user_id = u.id WHERE u.id = ?', [$id]) : null;
+$u = $id ? q_one('SELECT u.*, s.student_code, s.program_type, s.faculty, s.major, s.entry_year, s.advisor_id, s.status AS student_status,
+                         COALESCE(s.major_id, u.major_id) AS major_id
+                    FROM users u LEFT JOIN students s ON s.user_id = u.id WHERE u.id = ?', [$id]) : null;
+$majors = majors();
 if ($id && !$u) {
     flash('danger', 'ไม่พบผู้ใช้');
     redirect('/registrar/users');
@@ -25,7 +28,7 @@ if (is_post()) {
         'student_code' => (string) input('student_code', ''),
         'program_type' => input('program_type') === 'transfer' ? 'transfer' : '4year',
         'faculty'      => (string) input('faculty', setting('faculty_name')),
-        'major'        => (string) input('major', setting('default_major')),
+        'major_id'     => isset($majors[input_int('major_id')]) ? input_int('major_id') : null,
         'entry_year'   => input_int('entry_year') ?: entry_year_from_code((string) input('student_code', '')),
         'advisor_id'   => input_int('advisor_id') ?: null,
         'student_status' => in_array(input('student_status'), ['studying', 'graduated', 'inactive'], true) ? input('student_status') : 'studying',
@@ -38,6 +41,8 @@ if (is_post()) {
     if (!preg_match('/^[0-9A-Za-z._\-]{3,50}$/', $d['username'])) $errors[] = 'ชื่อผู้ใช้ต้องเป็นตัวอักษรภาษาอังกฤษ/ตัวเลข 3-50 ตัว';
     elseif (q_val('SELECT 1 FROM users WHERE username = ? AND id <> ?', [$d['username'], $id])) $errors[] = 'ชื่อผู้ใช้นี้มีอยู่แล้ว';
     if ($d['first_name'] === '' || $d['last_name'] === '') $errors[] = 'กรุณากรอกชื่อและนามสกุล';
+    if (in_array($role, ['student', 'teacher'], true) && !$d['major_id']) $errors[] = 'กรุณาเลือกสาขาวิชา';
+    $d['major'] = $d['major_id'] ? $majors[$d['major_id']]['name'] : '';
     if ($d['email'] && !filter_var($d['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'อีเมลไม่ถูกต้อง';
     if (!$id && $d['password'] === '' && $role !== 'student') $errors[] = 'กรุณากำหนดรหัสผ่านเริ่มต้น';
     if ($d['password'] !== '' && mb_strlen($d['password']) < 6) $errors[] = 'รหัสผ่านต้องยาวอย่างน้อย 6 ตัว';
@@ -52,19 +57,23 @@ if (is_post()) {
         if ($id) {
             q('UPDATE users SET username=?, prefix=?, first_name=?, last_name=?, email=?, phone=?, must_change_password=? WHERE id=?',
                 [$d['username'], $d['prefix'], $d['first_name'], $d['last_name'], $d['email'], $d['phone'], $d['must_change'], $id]);
+            if ($role === 'teacher') {
+                q('UPDATE users SET major_id = ? WHERE id = ?', [$d['major_id'], $id]);
+            }
             if ($d['password'] !== '') {
                 q('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($d['password'], PASSWORD_DEFAULT), $id]);
             }
         } else {
-            q('INSERT INTO users (username, password_hash, role, prefix, first_name, last_name, email, phone, must_change_password) VALUES (?,?,?,?,?,?,?,?,?)',
-                [$d['username'], password_hash($d['password'], PASSWORD_DEFAULT), $role, $d['prefix'], $d['first_name'], $d['last_name'], $d['email'], $d['phone'], $d['must_change']]);
+            q('INSERT INTO users (username, password_hash, role, prefix, first_name, last_name, email, phone, must_change_password, major_id) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                [$d['username'], password_hash($d['password'], PASSWORD_DEFAULT), $role, $d['prefix'], $d['first_name'], $d['last_name'], $d['email'], $d['phone'], $d['must_change'],
+                 $role === 'teacher' ? $d['major_id'] : null]);
             $id = (int) db()->lastInsertId();
         }
         if ($role === 'student') {
-            q('INSERT INTO students (user_id, student_code, program_type, faculty, major, entry_year, advisor_id, status) VALUES (?,?,?,?,?,?,?,?)
-               ON DUPLICATE KEY UPDATE student_code=VALUES(student_code), program_type=VALUES(program_type), faculty=VALUES(faculty), major=VALUES(major),
+            q('INSERT INTO students (user_id, student_code, program_type, faculty, major, major_id, entry_year, advisor_id, status) VALUES (?,?,?,?,?,?,?,?,?)
+               ON DUPLICATE KEY UPDATE student_code=VALUES(student_code), program_type=VALUES(program_type), faculty=VALUES(faculty), major=VALUES(major), major_id=VALUES(major_id),
                                        entry_year=VALUES(entry_year), advisor_id=VALUES(advisor_id), status=VALUES(status)',
-                [$id, $d['student_code'], $d['program_type'], $d['faculty'], $d['major'], $d['entry_year'], $d['advisor_id'], $d['student_status']]);
+                [$id, $d['student_code'], $d['program_type'], $d['faculty'], $d['major'], $d['major_id'], $d['entry_year'], $d['advisor_id'], $d['student_status']]);
         }
         db()->commit();
         audit($u ? 'user.update' : 'user.create', ['id' => $id, 'username' => $d['username']]);
@@ -74,8 +83,9 @@ if (is_post()) {
     $u = array_merge($u ?? [], $d);
 }
 
-$teachers = q_all("SELECT id, prefix, first_name, last_name FROM users WHERE role = 'teacher' AND is_active = 1 ORDER BY first_name");
+$teachers = q_all("SELECT id, prefix, first_name, last_name, major_id FROM users WHERE role = 'teacher' AND is_active = 1 ORDER BY first_name");
 $v = fn(string $k, $default = '') => $u[$k] ?? $default;
+$majorSel = (int) $v('major_id', office_major()['id'] ?? 0);
 
 layout_start($id ? 'แก้ไขผู้ใช้' : 'เพิ่มผู้ใช้');
 page_header(($id ? 'แก้ไข' : 'เพิ่ม') . role_label($role), $id ? full_name($u) : null);
@@ -107,9 +117,22 @@ page_header(($id ? 'แก้ไข' : 'เพิ่ม') . role_label($role), $
             <div class="col-md-5"><label class="form-label">นามสกุล *</label><input name="last_name" class="form-control" required value="<?= e($v('last_name')) ?>"></div>
             <div class="col-md-6"><label class="form-label">อีเมล</label><input type="email" name="email" class="form-control" value="<?= e($v('email')) ?>"></div>
             <div class="col-md-6"><label class="form-label">โทรศัพท์</label><input name="phone" class="form-control" value="<?= e($v('phone')) ?>"></div>
+            <?php if ($role === 'teacher'): ?>
+                <div class="col-md-6"><label class="form-label">สาขาวิชา *</label>
+                    <select name="major_id" class="form-select" required>
+                        <option value="">— เลือกสาขา —</option>
+                        <?php foreach ($majors as $m): ?><option value="<?= $m['id'] ?>" <?= $majorSel === (int) $m['id'] ? 'selected' : '' ?>><?= e($m['name']) ?></option><?php endforeach; ?>
+                    </select>
+                </div>
+            <?php endif; ?>
             <?php if ($role === 'student'): ?>
                 <div class="col-md-6"><label class="form-label">คณะ</label><input name="faculty" class="form-control" value="<?= e($v('faculty', setting('faculty_name'))) ?>"></div>
-                <div class="col-md-6"><label class="form-label">สาขาวิชา</label><input name="major" class="form-control" value="<?= e($v('major', setting('default_major'))) ?>"></div>
+                <div class="col-md-6"><label class="form-label">สาขาวิชา *</label>
+                    <select name="major_id" class="form-select" required>
+                        <option value="">— เลือกสาขา —</option>
+                        <?php foreach ($majors as $m): ?><option value="<?= $m['id'] ?>" <?= $majorSel === (int) $m['id'] ? 'selected' : '' ?>><?= e($m['name']) ?></option><?php endforeach; ?>
+                    </select>
+                </div>
                 <div class="col-md-6"><label class="form-label">อาจารย์ที่ปรึกษา</label>
                     <select name="advisor_id" class="form-select">
                         <option value="">-</option>
